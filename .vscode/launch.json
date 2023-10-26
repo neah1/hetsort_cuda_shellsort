@@ -8,12 +8,13 @@
             "name": "CUDA C++: Launch",
             "type": "cuda-gdb",
             "request": "launch",
-            "program": "${workspaceFolder}/basic_shellsort"
+            "program": "${workspaceFolder}/shellsort"
         },
         {
             "name": "CUDA C++: Attach",
             "type": "cuda-gdb",
-            "request": "attach"
+            "request": "attach",
+            "program": "${workspaceFolder}/shellsort"
         }
     ]
 }
