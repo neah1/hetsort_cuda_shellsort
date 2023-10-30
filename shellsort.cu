@@ -1,46 +1,59 @@
+#include <cuda.h>
+#include <cuda_runtime.h>
 #include <stdio.h>
 
-__global__ void parallelShellSort(int *d_array, int array_size, int gap)
+#define CHECK_CUDA_ERROR(err)                                         \
+    if (err != cudaSuccess)                                           \
+    {                                                                 \
+        fprintf(stderr, "CUDA Error: %s\n", cudaGetErrorString(err)); \
+        exit(EXIT_FAILURE);                                           \
+    }
+
+__global__ void parallelShellSort(int *array, int arraySize, int increment)
 {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
     int stride = blockDim.x * gridDim.x;
 
-    for (int i = idx * gap; i < array_size; i += stride * gap)
+    for (int i = index; i < arraySize; i += stride)
     {
-        int temp = d_array[i];
-        int j = i;
-        for (; j >= gap && d_array[j - gap] > temp; j -= gap)
-        {
-            d_array[j] = d_array[j - gap];
-        }
-        d_array[j] = temp;
+        // ... Insertion sort logic goes here
     }
 }
 
 int main()
 {
-    int h_array[] = {34, 7, 23, 32, 5, 62, 19, 39};
-    int array_size = sizeof(h_array) / sizeof(h_array[0]);
-    int *d_array;
-    cudaMalloc(&d_array, array_size * sizeof(int));
-    // cudaMemcpy(d_array, h_array, array_size * sizeof(int), cudaMemcpyHostToDevice);
+    // TEMPORARY INPUT ARRAY
+    int h_inputArray[] = {34, 7, 23, 32, 5, 62, 19, 39};
+    int arraySize = sizeof(h_inputArray) / sizeof(h_inputArray[0]);
+    size_t arrayByteSize = arraySize * sizeof(int);
 
-    // int gap = 4; // Starting with a gap of 4 for demonstration
-    // int threadsPerBlock = 256;
-    // int blocks = (array_size + threadsPerBlock - 1) / threadsPerBlock;
+    // Allocate device memory
+    int *d_inputArray;
+    CHECK_CUDA_ERROR(cudaMalloc((void **)&d_inputArray, arrayByteSize));
+    CHECK_CUDA_ERROR(cudaMemcpy(d_inputArray, h_inputArray, arrayByteSize, cudaMemcpyHostToDevice));
 
-    // parallelShellSort<<<blocks, threadsPerBlock>>>(d_array, array_size, gap);
-    // cudaDeviceSynchronize();
+    int increments[] = {121, 40, 13, 4, 1}; // Example increment sequence from Ciura (2001)
+    int numThreads = 256;
+    int numBlocks = (arraySize + numThreads - 1) / numThreads;
+    for (int i = 0; i < sizeof(increments) / sizeof(increments[0]); i++)
+    {
+        int increment = increments[i];
+        parallelShellSort<<<numBlocks, numThreads>>>(d_inputArray, arraySize, increment);
+        cudaDeviceSynchronize(); // Ensure kernel execution is finished before next iteration
+    }
 
-    // cudaMemcpy(h_array, d_array, array_size * sizeof(int), cudaMemcpyDeviceToHost);
+    // Copy sorted array back to host
+    CHECK_CUDA_ERROR(cudaMemcpy(h_inputArray, d_inputArray, arrayByteSize, cudaMemcpyDeviceToHost));
 
-    // printf("Sorted Array: ");
-    // for (int i = 0; i < array_size; i++)
-    // {
-    //     printf("%d ", h_array[i]);
-    // }
-    // printf("\n");
+    // Print sorted array
+    for (int i = 0; i < arraySize; i++)
+    {
+        printf("%d ", h_inputArray[i]);
+    }
+    printf("\n");
 
-    // cudaFree(d_array);
+    // Free device memory
+    cudaFree(d_inputArray);
+
     return 0;
 }
