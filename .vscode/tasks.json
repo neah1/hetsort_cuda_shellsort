@@ -1,0 +1,21 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "CUDA C++: Build",
+            "type": "shell",
+            "command": "nvcc",
+            "args": [
+                "-g",
+                "-G",
+                "-o",
+                "shellsort",
+                "shellsort_basic.cu"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}
