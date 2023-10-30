@@ -1,0 +1,36 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "CUDA C++: Build",
+            "type": "shell",
+            "command": "make",
+            "args": [
+                "build"
+            ],
+            "group": {
+                "kind": "build"
+            }
+        },
+        {
+            "label": "CUDA C++: Rebuild",
+            "type": "shell",
+            "command": "make",
+            "args": [
+                "rebuild"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "CUDA C++: Clean",
+            "type": "shell",
+            "command": "make",
+            "args": [
+                "clean"
+            ]
+        }
+    ]
+}
