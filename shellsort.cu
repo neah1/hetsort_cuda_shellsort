@@ -16,7 +16,13 @@ __global__ void parallelShellSort(int *array, int arraySize, int increment)
 
     for (int i = index; i < arraySize; i += stride)
     {
-        // ... Insertion sort logic goes here
+        int temp = array[i];
+        int j;
+        for (j = i; j >= increment && array[j - increment] > temp; j -= increment)
+        {
+            array[j] = array[j - increment];
+        }
+        array[j] = temp;
     }
 }
 
@@ -33,7 +39,7 @@ int main()
     CHECK_CUDA_ERROR(cudaMemcpy(d_inputArray, h_inputArray, arrayByteSize, cudaMemcpyHostToDevice));
 
     int increments[] = {121, 40, 13, 4, 1}; // Example increment sequence from Ciura (2001)
-    int numThreads = 256;
+    int numThreads = 1;
     int numBlocks = (arraySize + numThreads - 1) / numThreads;
     for (int i = 0; i < sizeof(increments) / sizeof(increments[0]); i++)
     {
