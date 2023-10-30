@@ -7,7 +7,7 @@ LDFLAGS=
 TARGET=shellsort
 
 # Source and Object files
-SRC=shellsort_basic.cu
+SRC=shellsort.cu
 OBJ=$(SRC:.cu=.o)
 
 # Build the application
@@ -19,16 +19,15 @@ $(TARGET): $(OBJ)
 %.o: %.cu
 	$(CC) $(CFLAGS) -c $< -o $@
 
+# Rebuild the application
+rebuild: clean build
+
 # Run the application
 run: build
 	./$(TARGET)
-
-# Debug the application (this will launch cuda-gdb)
-debug: build
-	cuda-gdb --args ./$(TARGET)
 
 # Clean up generated files
 clean:
 	rm -f $(OBJ) $(TARGET)
 
-.PHONY: build run debug clean
+.PHONY: build rebuild run clean

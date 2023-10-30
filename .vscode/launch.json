@@ -9,7 +9,7 @@
             "type": "cuda-gdb",
             "request": "launch",
             "program": "${workspaceFolder}/shellsort",
-            "preLaunchTask": "CUDA C++: Build",
+            "preLaunchTask": "CUDA C++: Rebuild",
         },
         {
             "name": "CUDA C++: Attach",

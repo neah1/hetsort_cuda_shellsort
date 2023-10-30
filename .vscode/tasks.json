@@ -9,6 +9,17 @@
                 "build"
             ],
             "group": {
+                "kind": "build"
+            }
+        },
+        {
+            "label": "CUDA C++: Rebuild",
+            "type": "shell",
+            "command": "make",
+            "args": [
+                "rebuild"
+            ],
+            "group": {
                 "kind": "build",
                 "isDefault": true
             }
