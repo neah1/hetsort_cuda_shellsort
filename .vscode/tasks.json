@@ -4,18 +4,22 @@
         {
             "label": "CUDA C++: Build",
             "type": "shell",
-            "command": "nvcc",
+            "command": "make",
             "args": [
-                "-g",
-                "-G",
-                "-o",
-                "shellsort",
-                "shellsort_basic.cu"
+                "build"
             ],
             "group": {
                 "kind": "build",
                 "isDefault": true
             }
+        },
+        {
+            "label": "CUDA C++: Clean",
+            "type": "shell",
+            "command": "make",
+            "args": [
+                "clean"
+            ]
         }
     ]
 }
