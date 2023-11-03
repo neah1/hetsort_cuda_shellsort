@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <nvtx3/nvToolsExt.h>
 #include "benchmark.h"
 
 __global__ void parallelShellSort(int *array, int arraySize, int increment);
@@ -43,6 +44,7 @@ int main()
     for (int i = 0; i < iterations; i++)
     {
         cudaEventRecord(start, NULL);
+        nvtxRangePush("Shellsort");
 
         // Run parallel shell-sort
         for (int i = 0; i < sizeof(increments) / sizeof(increments[0]); i++)
@@ -52,6 +54,7 @@ int main()
             cudaDeviceSynchronize(); // Ensure kernel execution is finished before next iteration
         }
 
+        nvtxRangePop();
         cudaEventRecord(stop, NULL);
         cudaEventSynchronize(stop);
 

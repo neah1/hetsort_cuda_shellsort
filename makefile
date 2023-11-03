@@ -11,7 +11,7 @@ TARGET := $(OBJ_DIR)/shellsort
 
 # Profiling settings
 NSYS_PROFILE := nsys profile --stats=true --output=$(OBJ_DIR)/nsys_profile.qdrep
-NCU_PROFILE := nv-nsight-cu-cli --metrics achieved_occupancy,sm_efficiency,achieved_active_warps_per_sm --export=$(OBJ_DIR)/ncu_profile.txt
+NCU_PROFILE := nv-nsight-cu-cli --target-processes all --metrics achieved_occupancy,sm_efficiency,achieved_active_warps_per_sm --export=$(OBJ_DIR)/ncu_profile.txt
 
 # Phony targets
 .PHONY: build rebuild run clean profile-nsys profile-ncu
