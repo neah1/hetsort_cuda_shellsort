@@ -1,41 +1,61 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <nvtx3/nvToolsExt.h>
 #include "benchmark.h"
 
+// Algorithm parameters
+const int seed = 0;
+const int warmup = 10;
+const int iterations = 10;
+const int arraySize = 10'000;
+const int increments[] = {1750, 701, 301, 132, 57, 23, 10, 4, 1}; // Increment sequence from Ciura (2001)
+// const int increments[] = {5, 3, 1}; // Shell's original sequence
+const int numThreads = 256;
+const int numBlocks = (arraySize + numThreads - 1) / numThreads;
+const int numIncrements = sizeof(increments) / sizeof(increments[0]);
+const size_t arrayByteSize = arraySize * sizeof(int);
+
+// Function prototypes
 __global__ void parallelShellSort(int *array, int arraySize, int increment);
+void warmUpGPU(int *d_array, int *h_inputArray);
+void runSort(int *d_array, int *h_inputArray, int *h_outputArray);
 
 int main()
 {
-    // Generate input array
-    const int seed = 0;
-    int iterations = 10;
-    const int arraySize = 10'000;
-    size_t arrayByteSize = arraySize * sizeof(int);
+    // Allocate and initialize arrays
+    int *d_array;
     int *h_inputArray = (int *)malloc(arrayByteSize);
     int *h_outputArray = (int *)malloc(arrayByteSize);
     generateRandomArray(h_inputArray, arraySize, seed);
+    CHECK_CUDA_ERROR(cudaMalloc((void **)&d_array, arrayByteSize));
 
-    // Allocate device memory
-    int *d_inputArray;
-    CHECK_CUDA_ERROR(cudaMalloc((void **)&d_inputArray, arrayByteSize));
-    CHECK_CUDA_ERROR(cudaMemcpy(d_inputArray, h_inputArray, arrayByteSize, cudaMemcpyHostToDevice));
+    // Run shellsort
+    warmUpGPU(d_array, h_inputArray);
+    runSort(d_array, h_inputArray, h_outputArray);
 
-    // Set kernel parameters
-    // int increments[] = {1750, 701, 301, 132, 57, 23, 10, 4, 1}; // Increment sequence from Ciura (2001)
-    int increments[] = {5, 3, 1}; // Shell's original sequence
-    int numThreads = 1;           // 256
-    int numBlocks = (arraySize + numThreads - 1) / numThreads;
+    // Free host and device memory
+    cudaFree(d_array);
+    free(h_inputArray);
+    free(h_outputArray);
 
-    // Warm up the GPU
-    for (int i = 0; i < 10; i++)
+    return 0;
+}
+
+void warmUpGPU(int *d_array, int *h_inputArray)
+{
+    CHECK_CUDA_ERROR(cudaMemcpy(d_array, h_inputArray, arrayByteSize, cudaMemcpyHostToDevice));
+    for (int i = 0; i < warmup; i++)
     {
-        parallelShellSort<<<numBlocks, numThreads>>>(d_inputArray, arraySize, 1);
+        parallelShellSort<<<numBlocks, numThreads>>>(d_array, arraySize, 1);
         cudaDeviceSynchronize();
     }
+}
 
-    // Create CUDA events
+void runSort(int *d_array, int *h_inputArray, int *h_outputArray)
+{
+    // Create CUDA events for timing
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
@@ -43,28 +63,32 @@ int main()
     float totalTime = 0.0f;
     for (int i = 0; i < iterations; i++)
     {
+        // Copy unsorted array to device
+        CHECK_CUDA_ERROR(cudaMemcpy(d_array, h_inputArray, arrayByteSize, cudaMemcpyHostToDevice));
+
+        // Start recording
         cudaEventRecord(start, NULL);
         nvtxRangePush("Shellsort");
 
-        // Run parallel shell-sort
-        for (int i = 0; i < sizeof(increments) / sizeof(increments[0]); i++)
+        // Run parallel shell-sort for each increment
+        for (int j = 0; j < numIncrements; j++)
         {
-            int increment = increments[i];
-            parallelShellSort<<<numBlocks, numThreads>>>(d_inputArray, arraySize, increment);
-            cudaDeviceSynchronize(); // Ensure kernel execution is finished before next iteration
+            parallelShellSort<<<numBlocks, numThreads>>>(d_array, arraySize, increments[j]);
+            cudaDeviceSynchronize();
         }
 
+        // Stop recording
         nvtxRangePop();
         cudaEventRecord(stop, NULL);
         cudaEventSynchronize(stop);
 
-        // Calculate the duration and add it to total time
+        // Calculate elapsed time
         float milliseconds = 0;
         cudaEventElapsedTime(&milliseconds, start, stop);
         totalTime += milliseconds;
 
-        // Verify that the array is sorted
-        CHECK_CUDA_ERROR(cudaMemcpy(h_outputArray, d_inputArray, arrayByteSize, cudaMemcpyDeviceToHost));
+        // Copy sorted array back to host and verify
+        CHECK_CUDA_ERROR(cudaMemcpy(h_outputArray, d_array, arrayByteSize, cudaMemcpyDeviceToHost));
         if (!checkArraySorted(h_inputArray, h_outputArray, arraySize))
         {
             fprintf(stderr, "Error: Array not sorted correctly\n");
@@ -72,14 +96,11 @@ int main()
         }
     }
 
-    // Compute the average time per iteration
+    // Compute and print the average time per iteration
     float avgTime = totalTime / iterations;
     printf("Average Time for Sorting: %f ms\n", avgTime);
 
-    // Free host and device memory
-    free(h_inputArray);
-    free(h_outputArray);
-    cudaFree(d_inputArray);
-
-    return 0;
+    // Destroy CUDA events
+    cudaEventDestroy(start);
+    cudaEventDestroy(stop);
 }
