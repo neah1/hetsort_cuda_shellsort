@@ -16,7 +16,10 @@ $(TARGET): $(SRCS)
 	@nvcc -g -G $(SRCS) -o $@
 
 # Rebuild the application
-rebuild: clean build
+rebuild: 
+	@echo "Cleaning up $(TARGET)"
+	@rm -f $(TARGET)
+	@make -s build
 
 # Run the application
 run: rebuild
@@ -26,7 +29,7 @@ run: rebuild
 # Clean up generated files
 clean:
 	@echo "Cleaning up..."
-	@rm -rf $(TARGET)
+	@rm -rf $(BUILD_DIR)
 
 # Profile with Nsight Systems
 profile-nsys: $(TARGET)
