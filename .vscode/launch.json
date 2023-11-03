@@ -8,14 +8,14 @@
             "name": "CUDA C++: Debug",
             "type": "cuda-gdb",
             "request": "launch",
-            "program": "${workspaceFolder}/shellsort",
+            "program": "${workspaceFolder}/bin/shellsort",
             "preLaunchTask": "CUDA C++: Rebuild",
         },
         {
             "name": "CUDA C++: Attach",
             "type": "cuda-gdb",
             "request": "attach",
-            "program": "${workspaceFolder}/shellsort"
+            "program": "${workspaceFolder}/bin/shellsort"
         }
     ]
 }
