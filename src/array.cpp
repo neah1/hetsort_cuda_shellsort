@@ -1,13 +1,13 @@
-#include "benchmark.h"
+#include "array.h"
 
-void generateRandomArray(int *array, int size, int seed) {
+void generateRandomArray(int* array, int size, int seed) {
     srand(seed);
     for (int i = 0; i < size; ++i) {
         array[i] = rand() % 1000;
     }
 }
 
-void printArray(const int *array, int size) {
+void printArray(const int* array, int size) {
     printf("[");
     for (int i = 0; i < size; ++i) {
         printf("%d", array[i]);
@@ -18,7 +18,7 @@ void printArray(const int *array, int size) {
     printf("]\n");
 }
 
-bool checkArraySorted(const int *original, const int *sorted, int size) {
+bool checkArraySorted(const int* original, const int* sorted, int size) {
     std::unordered_map<int, int> counts;
     
     // Count elements in the original array

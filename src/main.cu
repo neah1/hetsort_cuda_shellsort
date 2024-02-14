@@ -3,49 +3,24 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <nvtx3/nvToolsExt.h>
-#include "benchmark.h"
+#include "array.h"
 
 // Algorithm parameters
 const int seed = 0;
 const int warmup = 2;
 const int iterations = 5;
-const int arraySize = 1'000'000;
+const int arraySize = 1'000;
 const size_t arrayByteSize = arraySize * sizeof(int);
 
-// Function prototypes
-void parallelShellsort(int *array, int arraySize);
-void warmUpGPU(int *d_array, int *h_inputArray);
-void runSort(int *d_array, int *h_inputArray, int *h_outputArray);
-
-int main() {
-    // Allocate and initialize arrays
-    int *d_array;
-    int *h_inputArray = (int *)malloc(arrayByteSize);
-    int *h_outputArray = (int *)malloc(arrayByteSize);
-    generateRandomArray(h_inputArray, arraySize, seed);
-    CHECK_CUDA_ERROR(cudaMalloc((void **)&d_array, arrayByteSize));
-
-    // Run shellsort
-    warmUpGPU(d_array, h_inputArray);
-    runSort(d_array, h_inputArray, h_outputArray);
-
-    // Free host and device memory
-    cudaFree(d_array);
-    free(h_inputArray);
-    free(h_outputArray);
-
-    return 0;
-}
-
-void warmUpGPU(int *d_array, int *h_inputArray) {
-    CHECK_CUDA_ERROR(cudaMemcpy(d_array, h_inputArray, arrayByteSize, cudaMemcpyHostToDevice));
+void warmUpGPU(int* d_array, int* h_inputArray) {
     for (int i = 0; i < warmup; i++) {
+        CHECK_CUDA_ERROR(cudaMemcpy(d_array, h_inputArray, arrayByteSize, cudaMemcpyHostToDevice));
         parallelShellsort(d_array, arraySize);
         cudaDeviceSynchronize();
     }
 }
 
-void runSort(int *d_array, int *h_inputArray, int *h_outputArray) {
+void runSort(int* d_array, int* h_inputArray, int* h_outputArray) {
     // Create CUDA events for timing
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
@@ -88,4 +63,23 @@ void runSort(int *d_array, int *h_inputArray, int *h_outputArray) {
     // Destroy CUDA events
     cudaEventDestroy(start);
     cudaEventDestroy(stop);
+}
+
+int main() {
+    // Allocate and initialize arrays
+    int* d_array;
+    int* h_inputArray = (int*)malloc(arrayByteSize);
+    int* h_outputArray = (int*)malloc(arrayByteSize);
+    generateRandomArray(h_inputArray, arraySize, seed);
+    CHECK_CUDA_ERROR(cudaMalloc((void**)&d_array, arrayByteSize));
+
+    // Run shellsort
+    warmUpGPU(d_array, h_inputArray);
+    runSort(d_array, h_inputArray, h_outputArray);
+
+    // Free host and device memory
+    cudaFree(d_array);
+    free(h_inputArray);
+    free(h_outputArray);
+    return 0;
 }
