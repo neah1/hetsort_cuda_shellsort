@@ -18,7 +18,7 @@ const int numIncrements = sizeof(increments) / sizeof(increments[0]);
 const size_t arrayByteSize = arraySize * sizeof(int);
 
 // Function prototypes
-__global__ void parallelShellSort(int *array, int arraySize, int increment);
+__global__ void parallelShellsort(int *array, int arraySize, int increment);
 void warmUpGPU(int *d_array, int *h_inputArray);
 void runSort(int *d_array, int *h_inputArray, int *h_outputArray);
 
@@ -48,7 +48,7 @@ void warmUpGPU(int *d_array, int *h_inputArray)
     CHECK_CUDA_ERROR(cudaMemcpy(d_array, h_inputArray, arrayByteSize, cudaMemcpyHostToDevice));
     for (int i = 0; i < warmup; i++)
     {
-        parallelShellSort<<<numBlocks, numThreads>>>(d_array, arraySize, 1);
+        parallelShellsort<<<numBlocks, numThreads>>>(d_array, arraySize, 1);
         cudaDeviceSynchronize();
     }
 }
@@ -73,7 +73,7 @@ void runSort(int *d_array, int *h_inputArray, int *h_outputArray)
         // Run parallel shell-sort for each increment
         for (int j = 0; j < numIncrements; j++)
         {
-            parallelShellSort<<<numBlocks, numThreads>>>(d_array, arraySize, increments[j]);
+            parallelShellsort<<<numBlocks, numThreads>>>(d_array, arraySize, increments[j]);
             cudaDeviceSynchronize();
         }
 

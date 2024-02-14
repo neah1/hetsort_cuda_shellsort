@@ -17,7 +17,7 @@ $(TARGET): $(SRCS)
 
 # Rebuild the application
 rebuild: 
-	@echo "Cleaning up $(TARGET)"
+	@echo "Cleaning $(TARGET)"
 	@rm -f $(TARGET)
 	@make -s build
 
