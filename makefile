@@ -6,7 +6,7 @@ NSYS_REPORT := $(BUILD_DIR)/profile.nsys-rep
 SRCS := $(wildcard $(SRC_DIR)/*.cpp $(SRC_DIR)/*.cu)
 
 # Phony targets
-.PHONY: build rebuild run clean profile-nsys view-report
+.PHONY: build rebuild run rerun clean profile-nsys view-report
 
 # Build target
 build: $(TARGET)
@@ -23,7 +23,9 @@ rebuild:
 
 # Run the application
 run: rebuild
-	@echo "Running $(TARGET)"
+	@./$(TARGET)
+
+rerun:
 	@./$(TARGET)
 
 # Clean up generated files
