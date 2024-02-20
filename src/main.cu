@@ -10,34 +10,26 @@
 const int seed = 0;
 const int warmup = 2;
 const int iterations = 5;
-const int arraySize = 1'000;
+const size_t arraySize = 1'000'000;
+typedef void CUDASort(const char*, int*, int*, size_t, bool);
 
-typedef void CUDASort(int*, int);
-const size_t arrayByteSize = arraySize * sizeof(int);
-
-void runSort(const char* sortName, CUDASort cudaSort, int* d_array, int* h_inputArray, int* h_outputArray) {
+void runSort(const char* sortName, CUDASort cudaSort, int* h_inputArray, int* h_outputArray) {
     // Warmup the GPU
-    for (int i = 0; i < warmup; i++) {
-        CHECK_CUDA_ERROR(cudaMemcpy(d_array, h_inputArray, arrayByteSize, cudaMemcpyHostToDevice));
-        cudaSort(d_array, arraySize);
-    }
+    for (int i = 0; i < warmup; i++) cudaSort(sortName, h_inputArray, h_outputArray, arraySize, false);
     
     // Create CUDA events for timing
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
-
     float totalTime = 0.0f;
-    for (int i = 0; i < iterations; i++) {
-        // Copy unsorted array to device
-        CHECK_CUDA_ERROR(cudaMemcpy(d_array, h_inputArray, arrayByteSize, cudaMemcpyHostToDevice));
 
+    for (int i = 0; i < iterations; i++) {
         // Start recording
         cudaEventRecord(start, NULL);
         nvtxRangePush(sortName);
 
         // Run parallel sorting algorithm
-        cudaSort(d_array, arraySize);
+        cudaSort(sortName, h_inputArray, h_outputArray, arraySize, true);
 
         // Stop recording
         nvtxRangePop();
@@ -49,8 +41,7 @@ void runSort(const char* sortName, CUDASort cudaSort, int* d_array, int* h_input
         cudaEventElapsedTime(&milliseconds, start, stop);
         totalTime += milliseconds;
 
-        // Copy sorted array back to host and verify
-        CHECK_CUDA_ERROR(cudaMemcpy(h_outputArray, d_array, arrayByteSize, cudaMemcpyDeviceToHost));
+        // Check if the array is sorted correctly
         if (!checkArraySorted(h_inputArray, h_outputArray, arraySize)) {
             fprintf(stderr, "Error (%s): Array not sorted correctly\n", sortName);
             exit(EXIT_FAILURE);
@@ -68,18 +59,16 @@ void runSort(const char* sortName, CUDASort cudaSort, int* d_array, int* h_input
 
 int main() {
     // Allocate and initialize arrays
-    int* d_array;
+    size_t arrayByteSize = arraySize * sizeof(int);
     int* h_inputArray = (int*)malloc(arrayByteSize);
     int* h_outputArray = (int*)malloc(arrayByteSize);
     generateRandomArray(h_inputArray, arraySize, seed);
-    CHECK_CUDA_ERROR(cudaMalloc((void**)&d_array, arrayByteSize));
 
     // Run sorting algorithms
-    runSort("Shellsort", parallelShellsort, d_array, h_inputArray, h_outputArray);
-    runSort("Thrustsort", thrustSort, d_array, h_inputArray, h_outputArray);
+    runSort("shellsort", GPUSort, h_inputArray, h_outputArray);
+    runSort("thrustsort", GPUSort, h_inputArray, h_outputArray);
 
-    // Free host and device memory
-    cudaFree(d_array);
+    // Free host memory
     free(h_inputArray);
     free(h_outputArray);
     return 0;
