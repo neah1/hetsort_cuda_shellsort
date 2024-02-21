@@ -18,7 +18,7 @@ __global__ void shellsortKernel(int* d_array, size_t arraySize, int increment) {
     }
 }
 
-void shellsort(int* d_array, size_t arraySize) {
+void shellsort(int* d_array, size_t arraySize, cudaStream_t stream) {
     // Shell's original sequence: {5, 3, 1}
     // Increment sequence from Ciura (2001)
     int increments[] = {1750, 701, 301, 132, 57, 23, 10, 4, 1}; 
@@ -26,27 +26,29 @@ void shellsort(int* d_array, size_t arraySize) {
     int numBlocks = (arraySize + numThreads - 1) / numThreads;
 
     for (int j = 0; j < sizeof(increments) / sizeof(increments[0]); j++) {
-        shellsortKernel<<<numBlocks, numThreads>>>(d_array, arraySize, increments[j]);
-        cudaDeviceSynchronize();
+        shellsortKernel<<<numBlocks, numThreads, 0, stream>>>(d_array, arraySize, increments[j]);
     }
 }
 
-void thrustsort(int* d_array, size_t arraySize) {
+void thrustsort(int* d_array, size_t arraySize, cudaStream_t& stream) {
     thrust::device_ptr<int> array_ptr(d_array);
-    thrust::sort(array_ptr, array_ptr + arraySize);
-    cudaDeviceSynchronize();
+    thrust::sort(thrust::cuda::par.on(stream), array_ptr, array_ptr + arraySize);
 }
 
 void GPUSort(const char* sortName, int* h_inputArray, int* h_outputArray, size_t arraySize, bool saveOutput) {
     int* d_array;
     size_t arrayByteSize = arraySize * sizeof(int);
+    cudaStream_t stream;
+    cudaStreamCreate(&stream);
     
     CHECK_CUDA_ERROR(cudaMalloc((void**)&d_array, arrayByteSize));
-    CHECK_CUDA_ERROR(cudaMemcpy(d_array, h_inputArray, arrayByteSize, cudaMemcpyHostToDevice));
+    CHECK_CUDA_ERROR(cudaMemcpyAsync(d_array, h_inputArray, arrayByteSize, cudaMemcpyHostToDevice, stream));
 
-    if (std::strcmp(sortName, "shellsort") == 0) shellsort(d_array, arraySize);
-    if (std::strcmp(sortName, "thrustsort") == 0) thrustsort(d_array, arraySize);
+    if (std::strcmp(sortName, "shellsort") == 0) shellsort(d_array, arraySize, stream);
+    if (std::strcmp(sortName, "thrustsort") == 0) thrustsort(d_array, arraySize, stream);
     
-    if (saveOutput) CHECK_CUDA_ERROR(cudaMemcpy(h_outputArray, d_array, arrayByteSize, cudaMemcpyDeviceToHost));
+    if (saveOutput) CHECK_CUDA_ERROR(cudaMemcpyAsync(h_outputArray, d_array, arrayByteSize, cudaMemcpyDeviceToHost, stream));
+    cudaStreamSynchronize(stream);
+    cudaStreamDestroy(stream);
     cudaFree(d_array);
 }
