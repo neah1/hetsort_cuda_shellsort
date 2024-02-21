@@ -15,6 +15,7 @@
 
 
 ## Shellsort optimization
+-1. Use STREAMS for concurrent kernel and memory transfer
 0. CUDA Shellsort optimization
 Implement optimizations described in the paper such as bitonic and even odd sorting
 1. Optimize Memory Access Patterns
