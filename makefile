@@ -1,7 +1,7 @@
 # Source files
 SRC_DIR := src
 BUILD_DIR := build
-TARGET := $(BUILD_DIR)/shellsort
+TARGET := $(BUILD_DIR)/main
 NSYS_REPORT := $(BUILD_DIR)/profile.nsys-rep
 SRCS := $(wildcard $(SRC_DIR)/*.cpp $(SRC_DIR)/*.cu)
 
