@@ -1,22 +1,22 @@
-#include <cuda_runtime.h>
-#include <vector>
 #include <iostream>
+#include <cuda_runtime.h>
 #include <thrust/sort.h>
-#include "shellsort.h"
 #include "array.h"
-
+#include "shellsort.h"
+#include "inplace_memcpy.cuh"
 
 struct GPUInfo {
     int id;
-    int *buffer1, *buffer2; // Reusable device memory
     size_t freeMem, totalMem, bufferSize;
-    cudaStream_t stream1, stream2; // CUDA stream for asynchronous operations
+    int *buffer1, *buffer2; // Reusable device memory
+    cudaStream_t stream1, stream2, stream3; // CUDA stream for asynchronous operations
 
     GPUInfo(int id, size_t freeMem, size_t totalMem)
-        : id(id), freeMem(freeMem), totalMem(totalMem), buffer1(nullptr), buffer2(nullptr), bufferSize(0) {
+        : id(id), freeMem(freeMem), totalMem(totalMem), bufferSize(0), buffer1(nullptr), buffer2(nullptr) {
         cudaSetDevice(id);
         cudaStreamCreate(&stream1);
         cudaStreamCreate(&stream2);
+        cudaStreamCreate(&stream3);
     }
 
     ~GPUInfo() {
@@ -25,6 +25,7 @@ struct GPUInfo {
         cudaFree(buffer2); // Free the second buffer
         cudaStreamDestroy(stream1); // Destroy the stream
         cudaStreamDestroy(stream2); // Destroy the second stream
+        cudaStreamDestroy(stream3); // Destroy the third stream
     }
 
     // Ensure the device array has enough memory allocated for the chunk
@@ -36,22 +37,21 @@ struct GPUInfo {
             if (doubleBuffer) {
                 cudaFree(buffer2); // Free the old device memory
                 cudaMalloc(&buffer2, requiredSize); // Allocate new memory
-                bufferSize = requiredSize;
             }
         }
     }
 };
 
 std::vector<GPUInfo> getGPUsInfo() {
+    std::vector<GPUInfo> gpus;
     int numGPUs;
     cudaGetDeviceCount(&numGPUs);
-    std::vector<GPUInfo> gpus(numGPUs);
-
+    
     for (int i = 0; i < numGPUs; ++i) {
         cudaSetDevice(i);
         size_t freeMem, totalMem;
         cudaMemGetInfo(&freeMem, &totalMem);
-        gpus[i] = {i, freeMem, totalMem};
+        gpus.emplace_back(i, freeMem, totalMem);
         std::cout << "GPU " << i << ": " << freeMem / (1024 * 1024) << " MB free, "
                   << totalMem / (1024 * 1024) << " MB total" << std::endl;
     }
@@ -82,19 +82,18 @@ void splitArrayIntoChunks(int* unsortedArray, size_t arraySize, std::vector<GPUI
     }
 }
 
-void distributeAndSortChunks(int* unsortedArray, size_t arraySize, std::vector<GPUInfo>& gpus, std::vector<std::vector<int>> chunks) {
-    size_t chunkByteSize = chunks[0].size() * sizeof(int);
-
+void sortChunks(std::vector<std::vector<int>> chunks, std::vector<GPUInfo>& gpus) {
     for (auto& gpu : gpus) {
         cudaSetDevice(gpu.id);
-        gpu.ensureCapacity(chunkByteSize);
+        gpu.ensureCapacity(chunks[0].size() * sizeof(int));
     }
-
 
     for (size_t i = 0; i < chunks.size(); ++i) {
         int gpuId = i % gpus.size();
         GPUInfo& gpu = gpus[gpuId];
         cudaSetDevice(gpu.id);
+
+        size_t chunkByteSize = chunks[i].size() * sizeof(int);
 
         cudaMemcpyAsync(gpu.buffer1, chunks[i].data(), chunkByteSize, cudaMemcpyHostToDevice, gpu.stream1);
 
@@ -106,7 +105,7 @@ void distributeAndSortChunks(int* unsortedArray, size_t arraySize, std::vector<G
     for (auto& gpu : gpus) cudaStreamSynchronize(gpu.stream1);
 }
 
-void distributeAndSortChunks2N(std::vector<std::vector<int>>& chunks, std::vector<GPUInfo>& gpus) {
+void sortChunks2N(std::vector<std::vector<int>>& chunks, std::vector<GPUInfo>& gpus) {
     size_t chunkByteSize = chunks[0].size() * sizeof(int);
 
     // Prepare streams and buffers for each GPU
@@ -145,7 +144,33 @@ void distributeAndSortChunks2N(std::vector<std::vector<int>>& chunks, std::vecto
     }
 }
 
+// InplaceMemcpy(chunks[i + 1].data(), nullptr, chunks[i-1].data(), chunkByteSize, chunkByteSize, gpu.stream1, gpu.stream3, chunkByteSize);
 
+int main() {
+    const int seed = 42;
+    const size_t arraySize = 100000;
 
-// TODO Final merge
+    // Allocate and initialize arrays
+    size_t arrayByteSize = arraySize * sizeof(int);
+    int* h_inputArray = (int*)malloc(arrayByteSize);
+    generateRandomArray(h_inputArray, arraySize, seed);
+    std::unordered_map<int, int> counts = countElements(h_inputArray, arraySize);
 
+    // Get GPU information
+    std::vector<GPUInfo> gpus = getGPUsInfo();
+
+    // Split the array into chunks based on GPU memory availability
+    std::vector<std::vector<int>> chunks;
+    splitArrayIntoChunks(h_inputArray, arraySize, gpus, chunks, true); // Enable double buffering
+
+    // Sort each chunk on the GPU
+    sortChunks(chunks, gpus);
+
+    // Check if each chunk is sorted correctly
+    if (checkChunksSorted(counts, chunks)) std::cout << "All chunks are sorted correctly." << std::endl;
+
+    // Clean up
+    free(h_inputArray);
+    for (auto& gpu : gpus) gpu.~GPUInfo();
+    return 0;
+}
