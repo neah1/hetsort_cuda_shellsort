@@ -1,6 +1,5 @@
 #include <iostream>
-#include <cuda_runtime.h>
-#include <thrust/sort.h>
+#include <parallel/algorithm>
 #include "array.h"
 #include "shellsort.h"
 #include "inplace_memcpy.cuh"
@@ -30,8 +29,9 @@ struct GPUInfo {
 
     // Ensure the device array has enough memory allocated for the chunk
     bool ensureCapacity(size_t requiredSize, bool doubleBuffer = false) {
-        if (requiredSize * 2 > freeMem) return false; // TODO: Handle this case
-        if (freeMem / (1024 * 1024) < 500) return false;
+        // TODO: Handle this case
+        if (requiredSize * 2 > freeMem) return false; 
+        if (freeMem / (1024 * 1024) < 300) return false;
 
         if (doubleBuffer) requiredSize /= 2;
         if (requiredSize > bufferSize) {
@@ -64,14 +64,16 @@ std::vector<GPUInfo> getGPUsInfo() {
 }
 
 void splitArrayIntoChunks(int* unsortedArray, size_t arraySize, std::vector<GPUInfo>& gpus, std::vector<std::vector<int>>& chunks, bool doubleBuffer = false) {
-    // Calculate chunk size based on available memory across all GPUs
-    size_t totalGPUMem = 0;
-    for (const auto& gpu : gpus) totalGPUMem += gpu.freeMem;
+    // // Calculate chunk size based on available memory across all GPUs
+    // size_t totalGPUMem = 0;
+    // for (const auto& gpu : gpus) totalGPUMem += gpu.freeMem;
 
-    // Estimate chunk size based on total GPU memory, leaving ~10MB margin per GPU
-    size_t totalAvailableMem = totalGPUMem - gpus.size() * (10 * 1024 * 1024);
-    size_t chunkSize = totalAvailableMem / gpus.size() / sizeof(int);
-    chunkSize /= 2; // Thrust sort
+    // // Estimate chunk size based on total GPU memory, leaving ~10MB margin per GPU
+    // size_t totalAvailableMem = totalGPUMem - gpus.size() * (10 * 1024 * 1024);
+    // size_t chunkSize = totalAvailableMem / gpus.size() / sizeof(int) / 2; // Thrust sort
+
+    // Calculate the chunk size based on the array size and the number of GPUs
+    size_t chunkSize = arraySize / gpus.size();
     if (doubleBuffer) chunkSize /= 2;
     
     // Determine the number of chunks needed
@@ -97,27 +99,44 @@ void sortChunks(std::vector<std::vector<int>>& chunks, std::vector<GPUInfo>& gpu
     for (size_t i = 0; i < chunks.size(); ++i) {
         size_t chunkByteSize = chunks[i].size() * sizeof(int);
 
-        for (size_t j = 1; j <= gpus.size(); ++j) {
+        for (size_t j = 0; j < gpus.size(); ++j) {
             int gpuId = (lastGPU + j) % gpus.size();
             GPUInfo& gpu = gpus[gpuId];
             cudaSetDevice(gpu.id);
 
             if (!gpu.ensureCapacity(chunkByteSize)) {
-                printf("GPU: %d, Chunk: %d, Chunk size: %zu, GPU free memory: %zu\n", gpu.id, i, chunkByteSize, gpu.freeMem);
+                printf("Chunk %d (%zu MB) is too large for GPU %d (%zu MB)\n", i, chunkByteSize / (1024 * 1024), gpu.id, gpu.freeMem / (1024 * 1024));
                 continue;
             }
-            printf("Sorting chunk %d on GPU %d\n", i, gpu.id);
+            printf("Sorting Chunk %d (%zu MB) on GPU %d (%zu MB)\n", i, chunkByteSize / (1024 * 1024), gpu.id, gpu.freeMem / (1024 * 1024));
 
             cudaMemcpyAsync(gpu.buffer1, chunks[i].data(), chunkByteSize, cudaMemcpyHostToDevice, gpu.stream1);
             thrustsort(gpu.buffer1, chunks[i].size(), gpu.stream1);
             cudaMemcpyAsync(chunks[i].data(), gpu.buffer1, chunkByteSize, cudaMemcpyDeviceToHost, gpu.stream1);
 
-            lastGPU = gpuId;
+            lastGPU = gpuId + 1;
             break;
         }
     }
 
     for (auto& gpu : gpus) cudaStreamSynchronize(gpu.stream1);
+}
+
+std::vector<int> multiWayMerge(std::vector<std::vector<int>>& chunks) {
+    // Prepare sequences for the multi-way merge
+    std::vector<std::pair<int*, int*>> sequences(chunks.size());
+    for(size_t i = 0; i < chunks.size(); ++i) {
+        sequences[i] = std::make_pair(chunks[i].data(), chunks[i].data() + chunks[i].size());
+    }
+
+    // Allocate memory for the final merged result
+    size_t total_size = 0;
+    for(const auto& chunk : chunks) total_size += chunk.size();
+    std::vector<int> merged_result(total_size);
+
+    // Perform the multiway merge
+    __gnu_parallel::multiway_merge(sequences.begin(), sequences.end(), merged_result.begin(), total_size, std::less<int>());
+    return merged_result;
 }
 
 int main(int argc, char* argv[]) {
@@ -143,6 +162,11 @@ int main(int argc, char* argv[]) {
 
     // Check if each chunk is sorted correctly
     if (checkChunksSorted(counts, chunks)) printf("Chunks are sorted correctly\n");
+
+    // Perform multi-way merge
+    std::vector<int> merged_result = multiWayMerge(chunks);
+
+    if (checkArraySorted(merged_result.data(), counts, arraySize)) printf("Array is sorted correctly\n");
 
     // Clean up
     free(h_inputArray);

@@ -4,6 +4,7 @@ BUILD_DIR := build
 TARGET := $(BUILD_DIR)/main
 NSYS_REPORT := $(BUILD_DIR)/profile.nsys-rep
 SRCS := $(wildcard $(SRC_DIR)/*.cpp $(SRC_DIR)/*.cu)
+OMP_FLAGS := -Xcompiler -fopenmp
 
 # Phony targets
 .PHONY: build rebuild run rerun clean profile-nsys view-report
@@ -13,7 +14,7 @@ build: $(TARGET)
 $(TARGET): $(SRCS)
 	@echo "Building $(TARGET)"
 	@mkdir -p $(BUILD_DIR)
-	@nvcc -g -G $(SRCS) -o $@
+	@nvcc -g -G $(OMP_FLAGS) $(SRCS) -o $@ -lgomp
 
 # Rebuild the application
 rebuild: 

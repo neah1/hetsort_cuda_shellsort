@@ -1,8 +1,5 @@
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <thrust/device_ptr.h>
-#include <thrust/sort.h>
 #include "array.h"
+#include "shellsort.h"
 
 __global__ void shellsortKernel(int* d_array, size_t arraySize, int increment) {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
