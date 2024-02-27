@@ -12,9 +12,10 @@
 - Overlapping Computation and Transfer: When dealing with multiple chunks per GPU, you can overlap computation (sorting) on one chunk with the transfer of the next chunk to the GPU and the transfer of the previously sorted chunk back to the CPU. This requires careful management of CUDA streams and events to synchronize operations without stalling the GPU or CPU. 2N approach from Maltenberger and Stele & Jacobsen paper adapted for in-place sorting.
 
 ## HET Sort optimization (TODO)
-- Bi-directional copying inplaceMemCpy GPU FROM MALTENBERGER
-- Reduce sync in inplacememcpy or have 1 thread for each GPU stream. Thread pool
+- Thrust needs extra freemem (ensureCapacity).
+- Deal with GPU variable free memory (splitting chunks logic). 
+- Bi-directional copying inplaceMemCpy FROM MALTENBERGER.
+- Reduce sync in inplacememcpy or implement ThreadPool for each GPU stream.
 - Eager merging VS multi-way merging
 - Merge Logic: Implementing an efficient merge logic that takes advantage of early chunk availability can be complex, especially if chunks finish at vastly different times. You may need a more sophisticated data structure to track sorted chunks and their merge partners.
-- Error Checking: In a complete application, you should check the return values of CUDA API calls for errors.
 - Pragma optimization for CPU

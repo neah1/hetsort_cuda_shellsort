@@ -45,18 +45,30 @@ bool checkArraySorted(const int* original, const int* sorted, size_t size) {
 
 bool checkChunksSorted(const std::unordered_map<int, int> originalCounts, const std::vector<std::vector<int>>& chunks) {
     std::unordered_map<int, int> chunkCounts;
+    bool sorted = true;
 
-    for (const auto& chunk : chunks) {
+    for (size_t i = 0; i < chunks.size(); ++i) {
+        const auto& chunk = chunks[i];
         for (int num : chunk) chunkCounts[num]++;
-        // Also, check if each chunk is individually sorted
-        if (!std::is_sorted(chunk.begin(), chunk.end())) return false;
+
+        if (!std::is_sorted(chunk.begin(), chunk.end())) {
+            printf("Chunk %zu is not sorted.\n", i);
+            sorted = false;
+        }
     }
 
     // Compare aggregated chunk counts to original counts
-    if (originalCounts.size() != chunkCounts.size()) return false;
-    for (const auto& pair : originalCounts) {
-        if (chunkCounts[pair.first] != pair.second) return false;
+    if (originalCounts.size() != chunkCounts.size()) {
+        printf("Mismatch in number of unique elements. Original: %zu, Aggregated: %zu\n", originalCounts.size(), chunkCounts.size());
+        sorted = false;
     }
 
-    return true;
+    for (const auto& pair : originalCounts) {
+        if (chunkCounts.find(pair.first) == chunkCounts.end() || chunkCounts[pair.first] != pair.second) {
+            printf("Mismatch in counts for element %d. Original: %d, Aggregated: %d\n", pair.first, pair.second, chunkCounts[pair.first]);
+            sorted = false;
+        }
+    }
+
+    return sorted;
 }
