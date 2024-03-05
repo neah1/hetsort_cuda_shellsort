@@ -7,7 +7,7 @@
 - Multiway merging: done at the end, multiple chunks, loser tree. Maltenberger's paper.
 
 ## HET Sort optimization (TODO)
-- 2 Buffers.
+- Implement 2n sorting (2 buffers per GPU).
 - Thrust needs extra freemem (ensureCapacity).
 - Deal with GPU variable free memory (splitting chunks logic). 
 - Bi-directional copying inplaceMemCpy FROM MALTENBERGER.

@@ -6,8 +6,8 @@
 
 struct GPUInfo {
     int id;
-    size_t freeMem, totalMem, bufferSize;
     int *buffer1, *buffer2; // Reusable device memory
+    size_t freeMem, totalMem, bufferSize;
     cudaStream_t stream1, stream2, stream3; // CUDA stream for asynchronous operations
 
     GPUInfo(int id, size_t freeMem, size_t totalMem)
@@ -166,6 +166,7 @@ int main(int argc, char* argv[]) {
     // Perform multi-way merge
     std::vector<int> merged_result = multiWayMerge(chunks);
 
+    // Check if the merged array is sorted correctly
     if (checkArraySorted(merged_result.data(), counts, arraySize)) printf("Array is sorted correctly\n");
 
     // Clean up

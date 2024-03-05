@@ -1,21 +1,17 @@
 ### 1. Parallel ShellSort Phase
-
--   For each increment \( K \), \( K \) threads concurrently sort \( K \) subsequences of the input sequence.
--   This process continues until \( K \) is smaller than a threshold \( S \).
--   The increment sequence used is obtained from Ciura (2001).
+- For each increment \( K \), \( K \) threads concurrently sort \( K \) subsequences of the input sequence.
+- This process continues until \( K \) is smaller than a threshold \( S \).
+- The increment sequence used is obtained from Ciura (2001).
 
 ### 2. Bitonic Merge Sort Phase
-
--   The input sequence is divided into \([N/S]\) subsequences.
--   Each thread block loads its own subsequence and sorts it using the bitonic merge sort.
+- The input sequence is divided into \([N/S]\) subsequences.
+- Each thread block loads its own subsequence and sorts it using the bitonic merge sort.
 
 ### 3. Odd-Even Bitonic Merge Phase
-
--   The \([N/S]\) subsequences are adjusted using the odd-even bitonic merge several times.
-
+- The \([N/S]\) subsequences are adjusted using the odd-even bitonic merge several times.
 
 ## Shellsort optimization
--1. Use STREAMS for concurrent kernel and memory transfer
+0. Use STREAMS for concurrent kernel and memory transfer
 0. CUDA Shellsort optimization
 Implement optimizations described in the paper such as bitonic and even odd sorting
 1. Optimize Memory Access Patterns
