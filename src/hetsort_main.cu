@@ -57,7 +57,7 @@ std::vector<GPUInfo> getGPUsInfo(bool doubleBuffer) {
     return gpus;
 }
 
-void splitArrayIntoChunks(int* unsortedArray, size_t arraySize, std::vector<GPUInfo>& gpus, std::vector<std::vector<int>>& chunks, bool doubleBuffer) {
+void splitArray(int* unsortedArray, size_t arraySize, std::vector<GPUInfo>& gpus, std::vector<std::vector<int>>& chunks, bool doubleBuffer) {
     // Calculate the chunk size based on the array size and the number of GPUs
     size_t chunkSize = arraySize / gpus.size();
     if (doubleBuffer) chunkSize /= 2;
@@ -71,40 +71,6 @@ void splitArrayIntoChunks(int* unsortedArray, size_t arraySize, std::vector<GPUI
         size_t startIdx = i * chunkSize;
         size_t endIdx = std::min(startIdx + chunkSize, arraySize);
         chunks.emplace_back(unsortedArray + startIdx, unsortedArray + endIdx);
-    }
-}
-
-void sortChunks(std::vector<std::vector<int>>& chunks, std::vector<GPUInfo>& gpus, size_t block_size = 1024 * 1024) {
-    size_t lastGPU = 0;
-    for (size_t i = 0; i < chunks.size(); ++i) {
-        size_t chunkByteSize = chunks[i].size() * sizeof(int);
-
-        for (size_t j = 0; j < gpus.size(); ++j) {
-            int gpuId = (lastGPU + j) % gpus.size();
-            GPUInfo& gpu = gpus[gpuId];
-
-            if (!gpu.ensureCapacity(chunkByteSize)) {
-                printf("Chunk %d (%zu MB) is too large for GPU %d (%zu MB)\n", i, chunkByteSize / (1024 * 1024), gpu.id, gpu.freeMem / (1024 * 1024));
-                continue;
-            } else {
-                printf("Sorting Chunk %d (%zu MB) on GPU %d (%zu MB)\n", i, chunkByteSize / (1024 * 1024), gpu.id, gpu.freeMem / (1024 * 1024));
-            }
-
-            int* currentBuffer = gpu.useFirstBuffer ? gpu.buffer1 : gpu.buffer2;
-            cudaStream_t& currentStream = gpu.useFirstBuffer ? gpu.stream1 : gpu.stream2;
-            size_t currentBufferSize = gpu.useFirstBuffer ? gpu.bufferSize1 : gpu.bufferSize2;
-
-            thrustsort(currentBuffer, chunks[i].size(), currentStream);
-
-            lastGPU = gpuId + 1;
-            gpu.toggleBuffer();
-            break;
-        }
-    }
-
-    for (auto& gpu : gpus) {
-        cudaStreamSynchronize(gpu.stream1);
-        if (gpu.doubleBuffer) cudaStreamSynchronize(gpu.stream2);
     }
 }
 
@@ -142,7 +108,7 @@ int main(int argc, char* argv[]) {
 
     // Split the array into chunks based on GPU memory availability
     std::vector<std::vector<int>> chunks;
-    splitArrayIntoChunks(h_inputArray, arraySize, gpus, chunks, doubleBuffer);
+    splitArray(h_inputArray, arraySize, gpus, chunks, doubleBuffer);
 
     // Sort each chunk on the GPU
     sortChunks(chunks, gpus);

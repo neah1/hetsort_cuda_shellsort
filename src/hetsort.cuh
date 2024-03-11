@@ -1,11 +1,9 @@
-#ifndef HETSORT_CUH
-#define HETSORT_CUH
+#pragma once
 #include <iostream>
 #include <parallel/algorithm>
 
-#include "array.h"
-#include "inplace_memcpy.cuh"
-#include "shellsort.cuh"
+#include "array.cuh"
+#include "kernel.cuh"
 
 struct GPUInfo {
     int id;
@@ -21,8 +19,14 @@ struct GPUInfo {
 };
 
 std::vector<GPUInfo> getGPUsInfo(bool doubleBuffer);
-void splitArrayIntoChunks(int* unsortedArray, size_t arraySize, std::vector<GPUInfo>& gpus, std::vector<std::vector<int>>& chunks, bool doubleBuffer);
+void splitArray(int* unsortedArray, size_t arraySize, std::vector<GPUInfo>& gpus, std::vector<std::vector<int>>& chunks, bool doubleBuffer);
 void sortChunks(std::vector<std::vector<int>>& chunks, std::vector<GPUInfo>& gpus, size_t block_size = 1024 * 1024);
 std::vector<int> multiWayMerge(std::vector<std::vector<int>>& chunks);
+void InplaceMemcpy(int* htod_source, int* dtoh_source, int* dtoh_dest, size_t num_bytes_htod, size_t num_bytes_dtoh,
+                   cudaStream_t htod_stream, cudaStream_t dtoh_stream, size_t block_size);
 
-#endif
+#define CHECK_CUDA_ERROR(err)                                         \
+    if (err != cudaSuccess) {                                         \
+        fprintf(stderr, "CUDA Error: %s\n", cudaGetErrorString(err)); \
+        exit(EXIT_FAILURE);                                           \
+    }

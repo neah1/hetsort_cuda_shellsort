@@ -1,4 +1,4 @@
-#include "array.h"
+#include "array.cuh"
 
 void generateRandomArray(int* array, size_t size, int seed) {
     srand(seed);

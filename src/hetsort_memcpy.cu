@@ -1,5 +1,4 @@
-#pragma once
-#include "array.h"
+#include "hetsort.cuh"
 
 void InplaceMemcpy(int* htod_source, int* dtoh_source, int* dtoh_dest, size_t num_bytes_htod, size_t num_bytes_dtoh,
                    cudaStream_t htod_stream, cudaStream_t dtoh_stream, size_t block_size) {
