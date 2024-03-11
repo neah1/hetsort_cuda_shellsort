@@ -5,12 +5,10 @@
 - Overlapping Computation and Transfer: When dealing with multiple chunks per GPU, you can overlap computation (sorting) on one chunk with the transfer of the next chunk to the GPU and the transfer of the previously sorted chunk back to the CPU. This requires careful management of CUDA streams and events to synchronize operations without stalling the GPU or CPU. 2N approach from Maltenberger and Stele & Jacobsen paper adapted for in-place sorting.
 - Merge Logic: Implementing an efficient merge logic that takes advantage of early chunk availability can be complex, especially if chunks finish at vastly different times. You may need a more sophisticated data structure to track sorted chunks and their merge partners.
 - Multiway merging: done at the end, multiple chunks, loser tree. Maltenberger's paper.
+- Bi-directional copying inplaceMemCpy FROM MALTENBERGER (rtx 2080 has 2 copy engines) (pick optimal blocksize). 
+- Eager merging according to Maltenberger is bad but make sure if its true for us as well.
 
 ## HET Sort optimization (TODO)
-- Implement 2n sorting (2 buffers per GPU).
-- Thrust needs extra freemem (ensureCapacity).
-- Deal with GPU variable free memory (splitting chunks logic). 
-- Bi-directional copying inplaceMemCpy FROM MALTENBERGER.
-- Reduce sync in inplacememcpy or implement ThreadPool for each GPU stream.
-- Pragma optimization for CPU.
-- Eager merging.
+- Allocate buffer to thrustsort to make use of 2n sorting (also ensureCapacity to allocate extra freemem?).
+- Group chunks into chunk groups to distribute to GPUs. Deal with GPU variable free memory (splitting chunks logic).
+- Implement ThreadPool for each GPU (+Pragma optimization).

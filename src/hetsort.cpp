@@ -6,48 +6,55 @@
 
 struct GPUInfo {
     int id;
-    int *buffer1, *buffer2; // Reusable device memory
-    size_t freeMem, totalMem, bufferSize;
-    cudaStream_t stream1, stream2, stream3; // CUDA stream for asynchronous operations
+    int *buffer1, *buffer2;
+    bool doubleBuffer, useFirstBuffer;
+    cudaStream_t stream1, stream2, streamTmp;
+    size_t freeMem, totalMem, bufferSize1, bufferSize2;
 
-    GPUInfo(int id, size_t freeMem, size_t totalMem)
-        : id(id), freeMem(freeMem), totalMem(totalMem), bufferSize(0), buffer1(nullptr), buffer2(nullptr) {
+    GPUInfo(int id, size_t freeMem, size_t totalMem, bool doubleBuffer)
+        : id(id), freeMem(freeMem), totalMem(totalMem), doubleBuffer(doubleBuffer), 
+        buffer1(nullptr), buffer2(nullptr), bufferSize1(0), bufferSize2(0), useFirstBuffer(true) {
         cudaSetDevice(id);
         cudaStreamCreate(&stream1);
-        cudaStreamCreate(&stream2);
-        cudaStreamCreate(&stream3);
+        cudaStreamCreate(&streamTmp);
+        if (doubleBuffer) cudaStreamCreate(&stream2);
     }
 
     ~GPUInfo() {
         cudaSetDevice(id);
-        cudaFree(buffer1); // Free the allocated memory
-        cudaFree(buffer2); // Free the second buffer
-        cudaStreamDestroy(stream1); // Destroy the stream
-        cudaStreamDestroy(stream2); // Destroy the second stream
-        cudaStreamDestroy(stream3); // Destroy the third stream
+        cudaFree(buffer1);
+        cudaStreamDestroy(stream1);
+        cudaStreamDestroy(streamTmp);
+        if (doubleBuffer) cudaFree(buffer2);
+        if (doubleBuffer) cudaStreamDestroy(stream2);
     }
 
-    // Ensure the device array has enough memory allocated for the chunk
-    bool ensureCapacity(size_t requiredSize, bool doubleBuffer = false) {
-        // TODO: Handle this case
-        if (requiredSize * 2 > freeMem) return false; 
-        if (freeMem / (1024 * 1024) < 300) return false;
+    void toggleBuffer() {
+        if (doubleBuffer) useFirstBuffer = !useFirstBuffer;
+    }
 
-        if (doubleBuffer) requiredSize /= 2;
-        if (requiredSize > bufferSize) {
-            bufferSize = requiredSize;
-            cudaFree(buffer1); // Free the old device memory
-            cudaMalloc(&buffer1, requiredSize); // Allocate new memory
-            if (doubleBuffer) {
-                cudaFree(buffer2); // Free the old device memory
-                cudaMalloc(&buffer2, requiredSize); // Allocate new memory
-            }
-        }
+    bool ensureCapacity(size_t requiredSize) {
+        if (freeMem < 500 * 1024 * 1024) return false;
+
+        size_t& bufferSize = useFirstBuffer ? bufferSize1 : bufferSize2;
+        size_t requiredMem = requiredSize - bufferSize;
+        if (freeMem < requiredMem) return false;
+
+        cudaSetDevice(id);
+        if (requiredSize <= bufferSize) return true;
+
+        int** buffer = useFirstBuffer ? &buffer1 : &buffer2;
+        cudaFree(*buffer);
+        cudaError_t err = cudaMalloc((void**)buffer, requiredSize);
+        if (err != cudaSuccess) return false;
+
+        freeMem -= requiredMem;
+        bufferSize1 = requiredSize;
         return true;
     }
 };
 
-std::vector<GPUInfo> getGPUsInfo() {
+std::vector<GPUInfo> getGPUsInfo(bool doubleBuffer) {
     int numGPUs;
     cudaGetDeviceCount(&numGPUs);
     std::vector<GPUInfo> gpus;
@@ -57,21 +64,13 @@ std::vector<GPUInfo> getGPUsInfo() {
         cudaSetDevice(i);
         size_t freeMem, totalMem;
         cudaMemGetInfo(&freeMem, &totalMem);
-        gpus.emplace_back(i, freeMem, totalMem);
+        gpus.emplace_back(i, freeMem, totalMem, doubleBuffer);
         printf("GPU %d: %zu MB free, %zu MB total\n", i, freeMem / (1024 * 1024), totalMem / (1024 * 1024));
     }
     return gpus;
 }
 
-void splitArrayIntoChunks(int* unsortedArray, size_t arraySize, std::vector<GPUInfo>& gpus, std::vector<std::vector<int>>& chunks, bool doubleBuffer = false) {
-    // // Calculate chunk size based on available memory across all GPUs
-    // size_t totalGPUMem = 0;
-    // for (const auto& gpu : gpus) totalGPUMem += gpu.freeMem;
-
-    // // Estimate chunk size based on total GPU memory, leaving ~10MB margin per GPU
-    // size_t totalAvailableMem = totalGPUMem - gpus.size() * (10 * 1024 * 1024);
-    // size_t chunkSize = totalAvailableMem / gpus.size() / sizeof(int) / 2; // Thrust sort
-
+void splitArrayIntoChunks(int* unsortedArray, size_t arraySize, std::vector<GPUInfo>& gpus, std::vector<std::vector<int>>& chunks, bool doubleBuffer) {
     // Calculate the chunk size based on the array size and the number of GPUs
     size_t chunkSize = arraySize / gpus.size();
     if (doubleBuffer) chunkSize /= 2;
@@ -88,13 +87,7 @@ void splitArrayIntoChunks(int* unsortedArray, size_t arraySize, std::vector<GPUI
     }
 }
 
-void sortChunks(std::vector<std::vector<int>>& chunks, std::vector<GPUInfo>& gpus) {
-    // Pre-allocate based on the first chunk as a simple heuristic
-    for (auto& gpu : gpus) {
-        cudaSetDevice(gpu.id);
-        gpu.ensureCapacity(chunks[0].size() * sizeof(int));
-    }
-
+void sortChunks(std::vector<std::vector<int>>& chunks, std::vector<GPUInfo>& gpus, size_t block_size = 1024 * 1024) {
     size_t lastGPU = 0;
     for (size_t i = 0; i < chunks.size(); ++i) {
         size_t chunkByteSize = chunks[i].size() * sizeof(int);
@@ -102,24 +95,30 @@ void sortChunks(std::vector<std::vector<int>>& chunks, std::vector<GPUInfo>& gpu
         for (size_t j = 0; j < gpus.size(); ++j) {
             int gpuId = (lastGPU + j) % gpus.size();
             GPUInfo& gpu = gpus[gpuId];
-            cudaSetDevice(gpu.id);
 
             if (!gpu.ensureCapacity(chunkByteSize)) {
                 printf("Chunk %d (%zu MB) is too large for GPU %d (%zu MB)\n", i, chunkByteSize / (1024 * 1024), gpu.id, gpu.freeMem / (1024 * 1024));
                 continue;
+            } else {
+                printf("Sorting Chunk %d (%zu MB) on GPU %d (%zu MB)\n", i, chunkByteSize / (1024 * 1024), gpu.id, gpu.freeMem / (1024 * 1024));
             }
-            printf("Sorting Chunk %d (%zu MB) on GPU %d (%zu MB)\n", i, chunkByteSize / (1024 * 1024), gpu.id, gpu.freeMem / (1024 * 1024));
 
-            cudaMemcpyAsync(gpu.buffer1, chunks[i].data(), chunkByteSize, cudaMemcpyHostToDevice, gpu.stream1);
-            thrustsort(gpu.buffer1, chunks[i].size(), gpu.stream1);
-            cudaMemcpyAsync(chunks[i].data(), gpu.buffer1, chunkByteSize, cudaMemcpyDeviceToHost, gpu.stream1);
+            int* currentBuffer = gpu.useFirstBuffer ? gpu.buffer1 : gpu.buffer2;
+            cudaStream_t& currentStream = gpu.useFirstBuffer ? gpu.stream1 : gpu.stream2;
+            size_t currentBufferSize = gpu.useFirstBuffer ? gpu.bufferSize1 : gpu.bufferSize2;
 
+            thrustsort(currentBuffer, chunks[i].size(), currentStream);
+            
             lastGPU = gpuId + 1;
+            gpu.toggleBuffer();
             break;
         }
     }
 
-    for (auto& gpu : gpus) cudaStreamSynchronize(gpu.stream1);
+    for (auto& gpu : gpus) {
+        cudaStreamSynchronize(gpu.stream1);
+        if (gpu.doubleBuffer) cudaStreamSynchronize(gpu.stream2);
+    }
 }
 
 std::vector<int> multiWayMerge(std::vector<std::vector<int>>& chunks) {
@@ -142,7 +141,8 @@ std::vector<int> multiWayMerge(std::vector<std::vector<int>>& chunks) {
 int main(int argc, char* argv[]) {
     int seed = 42;
     size_t arraySize = (argc > 1) ? std::atoi(argv[1]) : 1'000'000;
-    printf("Array size is set to: %zu\n", arraySize);
+    bool doubleBuffer = (argc > 2) ? std::atoi(argv[2]) : false;
+    printf("Array size is set to: %zu. Double buffer: %s\n", arraySize, doubleBuffer ? "true" : "false");
 
     // Allocate and initialize arrays
     size_t arrayByteSize = arraySize * sizeof(int);
@@ -151,11 +151,11 @@ int main(int argc, char* argv[]) {
     std::unordered_map<int, int> counts = countElements(h_inputArray, arraySize);
 
     // Get GPU information
-    std::vector<GPUInfo> gpus = getGPUsInfo();
+    std::vector<GPUInfo> gpus = getGPUsInfo(doubleBuffer);
 
     // Split the array into chunks based on GPU memory availability
     std::vector<std::vector<int>> chunks;
-    splitArrayIntoChunks(h_inputArray, arraySize, gpus, chunks);
+    splitArrayIntoChunks(h_inputArray, arraySize, gpus, chunks, doubleBuffer);
 
     // Sort each chunk on the GPU
     sortChunks(chunks, gpus);
@@ -173,44 +173,3 @@ int main(int argc, char* argv[]) {
     free(h_inputArray);
     return 0;
 }
-
-// void sortChunks2N(std::vector<std::vector<int>>& chunks, std::vector<GPUInfo>& gpus) {
-//     size_t chunkByteSize = chunks[0].size() * sizeof(int);
-
-//     // Prepare streams and buffers for each GPU
-//     for (auto& gpu : gpus) {
-//         cudaSetDevice(gpu.id);
-//         gpu.ensureCapacity(chunkByteSize / 2, true); // Allocate half of the total memory for each buffer
-//     }
-
-//     // Distribute chunks round-robin and manage double buffering
-//     size_t gpuId = 0;
-//     for (size_t i = 0; i < chunks.size(); ++i) {
-//         // Alternate between buffer1 and buffer2 for each chunk
-//         bool useFirstBuffer = (i / gpus.size()) % 2 == 0;
-//         GPUInfo& gpu = gpus[gpuId];
-//         cudaSetDevice(gpu.id);
-
-//         int* currentBuffer = useFirstBuffer ? gpu.buffer1 : gpu.buffer2;
-//         cudaStream_t& currentStream = useFirstBuffer ? gpu.stream1 : gpu.stream2;
-
-//         // Asynchronous copy to GPU
-//         cudaMemcpyAsync(currentBuffer, chunks[i].data(), chunkByteSize, cudaMemcpyHostToDevice, currentStream);
-        
-//         // Launch sorting operation asynchronously
-//         thrustsort(currentBuffer, chunks[i].size(), currentStream);
-
-//         // Asynchronous copy back to host
-//         cudaMemcpyAsync(chunks[i].data(), currentBuffer, chunkByteSize, cudaMemcpyDeviceToHost, currentStream);
-
-//         gpuId = (gpuId + 1) % gpus.size(); // Move to the next GPU
-//     }
-
-//     // Synchronize all GPUs
-//     for (auto& gpu : gpus) {
-//         cudaStreamSynchronize(gpu.stream1);
-//         cudaStreamSynchronize(gpu.stream2);
-//     }
-// }
-
-// InplaceMemcpy(chunks[i + 1].data(), nullptr, chunks[i-1].data(), chunkByteSize, chunkByteSize, gpu.stream1, gpu.stream3, chunkByteSize);
