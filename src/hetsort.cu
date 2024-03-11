@@ -1,58 +1,45 @@
-#include <iostream>
-#include <parallel/algorithm>
-#include "array.h"
-#include "shellsort.h"
-#include "inplace_memcpy.cuh"
+#include "hetsort.cuh"
 
-struct GPUInfo {
-    int id;
-    int *buffer1, *buffer2;
-    bool doubleBuffer, useFirstBuffer;
-    cudaStream_t stream1, stream2, streamTmp;
-    size_t freeMem, totalMem, bufferSize1, bufferSize2;
+GPUInfo::GPUInfo(int id, size_t freeMem, size_t totalMem, bool doubleBuffer)
+    : id(id), freeMem(freeMem), totalMem(totalMem), doubleBuffer(doubleBuffer), buffer1(nullptr), buffer2(nullptr), bufferSize1(0), bufferSize2(0), useFirstBuffer(true) {
+    cudaSetDevice(id);
+    cudaStreamCreate(&stream1);
+    cudaStreamCreate(&streamTmp);
+    if (doubleBuffer) cudaStreamCreate(&stream2);
+}
 
-    GPUInfo(int id, size_t freeMem, size_t totalMem, bool doubleBuffer)
-        : id(id), freeMem(freeMem), totalMem(totalMem), doubleBuffer(doubleBuffer), 
-        buffer1(nullptr), buffer2(nullptr), bufferSize1(0), bufferSize2(0), useFirstBuffer(true) {
-        cudaSetDevice(id);
-        cudaStreamCreate(&stream1);
-        cudaStreamCreate(&streamTmp);
-        if (doubleBuffer) cudaStreamCreate(&stream2);
-    }
+GPUInfo::~GPUInfo() {
+    cudaSetDevice(id);
+    cudaFree(buffer1);
+    cudaStreamDestroy(stream1);
+    cudaStreamDestroy(streamTmp);
+    if (doubleBuffer) cudaFree(buffer2);
+    if (doubleBuffer) cudaStreamDestroy(stream2);
+}
 
-    ~GPUInfo() {
-        cudaSetDevice(id);
-        cudaFree(buffer1);
-        cudaStreamDestroy(stream1);
-        cudaStreamDestroy(streamTmp);
-        if (doubleBuffer) cudaFree(buffer2);
-        if (doubleBuffer) cudaStreamDestroy(stream2);
-    }
+void GPUInfo::toggleBuffer() {
+    if (doubleBuffer) useFirstBuffer = !useFirstBuffer;
+}
 
-    void toggleBuffer() {
-        if (doubleBuffer) useFirstBuffer = !useFirstBuffer;
-    }
+bool GPUInfo::ensureCapacity(size_t requiredSize) {
+    if (freeMem < 500 * 1024 * 1024) return false;
 
-    bool ensureCapacity(size_t requiredSize) {
-        if (freeMem < 500 * 1024 * 1024) return false;
+    size_t& bufferSize = useFirstBuffer ? bufferSize1 : bufferSize2;
+    size_t requiredMem = requiredSize - bufferSize;
+    if (freeMem < requiredMem) return false;
 
-        size_t& bufferSize = useFirstBuffer ? bufferSize1 : bufferSize2;
-        size_t requiredMem = requiredSize - bufferSize;
-        if (freeMem < requiredMem) return false;
+    cudaSetDevice(id);
+    if (requiredSize <= bufferSize) return true;
 
-        cudaSetDevice(id);
-        if (requiredSize <= bufferSize) return true;
+    int** buffer = useFirstBuffer ? &buffer1 : &buffer2;
+    cudaFree(*buffer);
+    cudaError_t err = cudaMalloc((void**)buffer, requiredSize);
+    if (err != cudaSuccess) return false;
 
-        int** buffer = useFirstBuffer ? &buffer1 : &buffer2;
-        cudaFree(*buffer);
-        cudaError_t err = cudaMalloc((void**)buffer, requiredSize);
-        if (err != cudaSuccess) return false;
-
-        freeMem -= requiredMem;
-        bufferSize1 = requiredSize;
-        return true;
-    }
-};
+    freeMem -= requiredMem;
+    bufferSize1 = requiredSize;
+    return true;
+}
 
 std::vector<GPUInfo> getGPUsInfo(bool doubleBuffer) {
     int numGPUs;
@@ -74,11 +61,11 @@ void splitArrayIntoChunks(int* unsortedArray, size_t arraySize, std::vector<GPUI
     // Calculate the chunk size based on the array size and the number of GPUs
     size_t chunkSize = arraySize / gpus.size();
     if (doubleBuffer) chunkSize /= 2;
-    
+
     // Determine the number of chunks needed
     size_t numChunks = arraySize / chunkSize + (arraySize % chunkSize != 0);
     chunks.reserve(numChunks);
-    
+
     // Split the array into chunks
     for (size_t i = 0; i < numChunks; ++i) {
         size_t startIdx = i * chunkSize;
@@ -108,7 +95,7 @@ void sortChunks(std::vector<std::vector<int>>& chunks, std::vector<GPUInfo>& gpu
             size_t currentBufferSize = gpu.useFirstBuffer ? gpu.bufferSize1 : gpu.bufferSize2;
 
             thrustsort(currentBuffer, chunks[i].size(), currentStream);
-            
+
             lastGPU = gpuId + 1;
             gpu.toggleBuffer();
             break;
@@ -124,13 +111,13 @@ void sortChunks(std::vector<std::vector<int>>& chunks, std::vector<GPUInfo>& gpu
 std::vector<int> multiWayMerge(std::vector<std::vector<int>>& chunks) {
     // Prepare sequences for the multi-way merge
     std::vector<std::pair<int*, int*>> sequences(chunks.size());
-    for(size_t i = 0; i < chunks.size(); ++i) {
+    for (size_t i = 0; i < chunks.size(); ++i) {
         sequences[i] = std::make_pair(chunks[i].data(), chunks[i].data() + chunks[i].size());
     }
 
     // Allocate memory for the final merged result
     size_t total_size = 0;
-    for(const auto& chunk : chunks) total_size += chunk.size();
+    for (const auto& chunk : chunks) total_size += chunk.size();
     std::vector<int> merged_result(total_size);
 
     // Perform the multiway merge

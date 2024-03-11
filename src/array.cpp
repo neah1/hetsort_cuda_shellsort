@@ -39,7 +39,7 @@ bool checkArraySorted(const int* sorted, std::unordered_map<int, int> counts, si
         }
     }
     // If all elements' counts are exactly zero, arrays are identical
-    for (const auto &count : counts) {
+    for (const auto& count : counts) {
         if (count.second != 0) {
             printf("Element %d has count %d.\n", count.first, count.second);
             return false;

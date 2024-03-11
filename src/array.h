@@ -1,12 +1,13 @@
 #ifndef ARRAY_H
 #define ARRAY_H
-#include <time.h>
+#include <cuda_runtime.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <vector>
+#include <time.h>
+
 #include <algorithm>
 #include <unordered_map>
-#include <cuda_runtime.h>
+#include <vector>
 
 void printArray(const int* array, size_t size);
 void generateRandomArray(int* array, size_t size, int seed);

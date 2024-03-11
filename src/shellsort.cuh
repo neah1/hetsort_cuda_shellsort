@@ -1,5 +1,5 @@
-#ifndef SHELLSORT_H
-#define SHELLSORT_H
+#ifndef SHELLSORT_CUH
+#define SHELLSORT_CUH
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <thrust/device_ptr.h>
