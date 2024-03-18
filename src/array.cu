@@ -1,32 +1,32 @@
 #include "array.cuh"
 
-void generateRandomArray(int* array, size_t size, int seed) {
+void generateRandomArray(int* array, size_t arraySize, int seed) {
     srand(seed);
-    for (int i = 0; i < size; ++i) {
+    for (int i = 0; i < arraySize; ++i) {
         array[i] = rand() % 1000;
     }
 }
 
-void printArray(const int* array, size_t size) {
+void printArray(const int* array, size_t arraySize) {
     printf("[");
-    for (int i = 0; i < size; ++i) {
+    for (int i = 0; i < arraySize; ++i) {
         printf("%d", array[i]);
-        if (i < size - 1) {
+        if (i < arraySize - 1) {
             printf(", ");
         }
     }
     printf("]\n");
 }
 
-std::unordered_map<int, int> countElements(const int* array, size_t size) {
+std::unordered_map<int, int> countElements(const int* array, size_t arraySize) {
     std::unordered_map<int, int> counts;
-    for (size_t i = 0; i < size; ++i) counts[array[i]]++;
+    for (size_t i = 0; i < arraySize; ++i) counts[array[i]]++;
     return counts;
 }
 
-bool checkArraySorted(const int* sorted, std::unordered_map<int, int> counts, size_t size) {
+bool checkArraySorted(const int* sorted, std::unordered_map<int, int> counts, size_t arraySize) {
     // Check for the same elements and count in the sorted array
-    for (int i = 0; i < size; ++i) {
+    for (int i = 0; i < arraySize; ++i) {
         // If any element's count goes below zero, arrays are not identical
         if (--counts[sorted[i]] < 0) {
             printf("Element %d has count less than zero.\n", sorted[i]);

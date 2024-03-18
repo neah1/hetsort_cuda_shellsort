@@ -2,14 +2,14 @@
 
 void doubleMemcpy(int* d_array, const int* h_array, size_t arraySize, cudaStream_t stream1, cudaStream_t stream2) {
     size_t halfSize = arraySize / 2;
-    size_t halfSizeBytes = halfSize * sizeof(int);
-    size_t arraySizeBytes = arraySize * sizeof(int);
+    size_t halfByteSize = halfSize * sizeof(int);
+    size_t arrayByteSize = arraySize * sizeof(int);
 
     // Start async copy of the first half of the array
-    cudaMemcpyAsync(d_array, h_array, halfSizeBytes, cudaMemcpyHostToDevice, stream1);
+    cudaMemcpyAsync(d_array, h_array, halfByteSize, cudaMemcpyHostToDevice, stream1);
 
     // Start async copy of the second half of the array
-    cudaMemcpyAsync(d_array + halfSize, h_array + halfSize, arraySizeBytes - halfSizeBytes, cudaMemcpyHostToDevice, stream2);
+    cudaMemcpyAsync(d_array + halfSize, h_array + halfSize, arrayByteSize - halfByteSize, cudaMemcpyHostToDevice, stream2);
 
     // Wait for both streams to complete
     cudaStreamSynchronize(stream1);

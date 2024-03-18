@@ -13,7 +13,7 @@ void sortThrust2N(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::
             int* secondaryBuffer = gpu.useFirstBuffer ? gpu.buffer2 : gpu.buffer1;
 
             // Copy the first chunk data to the main GPU buffer
-            if (i == 0) doubleMemcpy(mainBuffer, chunks[i].data(), chunks[i].size() * sizeof(int), gpu.stream1, gpu.streamTmp);
+            if (i == 0) doubleMemcpy(mainBuffer, chunks[i].data(), chunks[i].size(), gpu.stream1, gpu.streamTmp);
             // if (i == 0) cudaMemcpyAsync(mainBuffer, chunks[i].data(), chunks[i].size() * sizeof(int), cudaMemcpyHostToDevice, gpu.stream1);
 
             // Sort the chunk
@@ -44,7 +44,7 @@ void sortThrustInplace(std::vector<std::vector<std::vector<int>>>& chunkGroups, 
 
         for (size_t i = 0; i < chunks.size(); ++i) {
             // Copy the first chunk data to the main GPU buffer
-            if (i == 0) doubleMemcpy(gpu.buffer1, chunks[i].data(), chunks[i].size() * sizeof(int), gpu.stream1, gpu.streamTmp);
+            if (i == 0) doubleMemcpy(gpu.buffer1, chunks[i].data(), chunks[i].size(), gpu.stream1, gpu.streamTmp);
             // if (i == 0) cudaMemcpyAsync(gpu.buffer1, chunks[i].data(), chunks[i].size() * sizeof(int), cudaMemcpyHostToDevice, gpu.stream1);
 
             // Sort the chunk
@@ -71,7 +71,7 @@ void sortShell(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::vec
 
         for (size_t i = 0; i < chunks.size(); ++i) {
             // Copy the first chunk data to the main GPU buffer
-            if (i == 0) doubleMemcpy(gpu.buffer1, chunks[i].data(), chunks[i].size() * sizeof(int), gpu.stream1, gpu.streamTmp);
+            if (i == 0) doubleMemcpy(gpu.buffer1, chunks[i].data(), chunks[i].size(), gpu.stream1, gpu.streamTmp);
             // if (i == 0) cudaMemcpyAsync(gpu.buffer1, chunks[i].data(), chunks[i].size() * sizeof(int), cudaMemcpyHostToDevice, gpu.stream1);
 
             // Sort the chunk
@@ -104,7 +104,7 @@ void sortShell2N(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::v
             cudaStream_t secondaryStream = gpu.useFirstBuffer ? gpu.stream2 : gpu.stream1;
 
             // Copy the first chunk data to the main GPU buffer
-            if (i == 0) doubleMemcpy(mainBuffer, chunks[i].data(), chunks[i].size() * sizeof(int), mainStream, gpu.streamTmp);
+            if (i == 0) doubleMemcpy(mainBuffer, chunks[i].data(), chunks[i].size(), mainStream, gpu.streamTmp);
             // if (i == 0) cudaMemcpyAsync(mainBuffer, chunks[i].data(), chunks[i].size() * sizeof(int), cudaMemcpyHostToDevice, mainStream);
 
             // Sort the chunk on the main buffer
