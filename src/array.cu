@@ -49,29 +49,32 @@ bool checkArraySorted(const int* sorted, std::unordered_map<int, int> counts, si
     return true;
 }
 
-bool checkChunksSorted(const std::unordered_map<int, int> counts, const std::vector<std::vector<int>>& chunks) {
-    std::unordered_map<int, int> chunkCounts;
+bool checkChunksSorted(const std::unordered_map<int, int>& counts, const std::vector<std::vector<std::vector<int>>>& chunkGroups) {
+    std::unordered_map<int, int> chunkGroupCounts;
     bool sorted = true;
 
-    for (size_t i = 0; i < chunks.size(); ++i) {
-        const auto& chunk = chunks[i];
-        for (int num : chunk) chunkCounts[num]++;
+    for (size_t g = 0; g < chunkGroups.size(); ++g) {
+        const auto& chunks = chunkGroups[g];
+        for (size_t i = 0; i < chunks.size(); ++i) {
+            const auto& chunk = chunks[i];
+            for (int num : chunk) chunkGroupCounts[num]++;
 
-        if (!std::is_sorted(chunk.begin(), chunk.end())) {
-            printf("Chunk %zu is not sorted.\n", i);
-            sorted = false;
+            if (!std::is_sorted(chunk.begin(), chunk.end())) {
+                printf("Chunk %zu in group %zu is not sorted.\n", i, g);
+                sorted = false;
+            }
         }
     }
 
-    // Compare aggregated chunk counts to original counts
-    if (counts.size() != chunkCounts.size()) {
-        printf("Mismatch in number of unique elements. Original: %zu, Aggregated: %zu\n", counts.size(), chunkCounts.size());
+    // Compare aggregated chunk group counts to original counts
+    if (counts.size() != chunkGroupCounts.size()) {
+        printf("Mismatch in number of unique elements. Original: %zu, Aggregated: %zu\n", counts.size(), chunkGroupCounts.size());
         sorted = false;
     }
-
+    
     for (const auto& pair : counts) {
-        if (chunkCounts.find(pair.first) == chunkCounts.end() || chunkCounts[pair.first] != pair.second) {
-            printf("Mismatch in counts for element %d. Original: %d, Aggregated: %d\n", pair.first, pair.second, chunkCounts[pair.first]);
+        if (chunkGroupCounts.find(pair.first) == chunkGroupCounts.end() || chunkGroupCounts[pair.first] != pair.second) {
+            printf("Mismatch in counts for element %d. Original: %d, Aggregated: %d\n", pair.first, pair.second, chunkGroupCounts[pair.first]);
             sorted = false;
         }
     }

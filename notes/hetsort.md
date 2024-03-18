@@ -7,8 +7,9 @@
 - Multiway merging: done at the end, multiple chunks, loser tree. Maltenberger's paper.
 - Bi-directional copying inplaceMemCpy FROM MALTENBERGER (rtx 2080 has 2 copy engines) (pick optimal blocksize). 
 - Eager merging according to Maltenberger is bad but make sure if its true for us as well.
+- Allocate buffer to thrustsort to make use of 2n sorting.
+- Group chunks into chunk groups to distribute to GPUs. 
+- Deal with GPU variable free memory.
 
 ## HET Sort optimization (TODO)
-- Allocate buffer to thrustsort to make use of 2n sorting (also ensureCapacity to allocate extra freemem?).
-- Group chunks into chunk groups to distribute to GPUs. Deal with GPU variable free memory (splitting chunks logic).
 - Implement ThreadPool for each GPU (+Pragma optimization).

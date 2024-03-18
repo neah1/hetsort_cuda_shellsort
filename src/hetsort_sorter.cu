@@ -20,7 +20,7 @@ void sortChunks(std::vector<std::vector<int>>& chunks, std::vector<GPUInfo>& gpu
             cudaStream_t& currentStream = gpu.useFirstBuffer ? gpu.stream1 : gpu.stream2;
             size_t currentBufferSize = gpu.useFirstBuffer ? gpu.bufferSize1 : gpu.bufferSize2;
 
-            thrustsort(currentBuffer, chunks[i].size(), currentStream);
+            thrustsort(currentBuffer, chunks[i].size(), currentBuffer, currentBufferSize, currentStream);
 
             lastGPU = gpuId + 1;
             gpu.toggleBuffer();
@@ -32,4 +32,8 @@ void sortChunks(std::vector<std::vector<int>>& chunks, std::vector<GPUInfo>& gpu
         cudaStreamSynchronize(gpu.stream1);
         if (gpu.doubleBuffer) cudaStreamSynchronize(gpu.stream2);
     }
+}
+
+void sortThrust2N(std::vector<std::vector<int>>& chunks, std::vector<GPUInfo>& gpus, size_t block_size) {
+    
 }
