@@ -57,22 +57,23 @@ std::vector<GPUInfo> getGPUsInfo(size_t bufferSize, bool buffers2N) {
 std::vector<std::vector<std::vector<int>>> splitArray(int* unsortedArray, size_t arraySize, size_t bufferSize, std::vector<GPUInfo>& gpus) {
     std::vector<std::vector<int>> chunks;
     
-    size_t numChunks = arraySize / bufferSize + (arraySize % bufferSize != 0);
+    size_t chunkElementCount = bufferSize / sizeof(int);
+    size_t numChunks = arraySize / chunkElementCount + (arraySize % chunkElementCount != 0);
     chunks.reserve(numChunks);
+
+    printf("Splitting array into %zu chunks\n", numChunks);
 
     // Split the array into chunks
     for (size_t i = 0; i < numChunks; ++i) {
-        size_t startIdx = i * bufferSize;
-        size_t endIdx = std::min(startIdx + bufferSize, arraySize);
+        size_t startIdx = i * chunkElementCount;
+        size_t endIdx = std::min(startIdx + chunkElementCount, arraySize);
         chunks.emplace_back(unsortedArray + startIdx, unsortedArray + endIdx);
     }
 
-    size_t numGPUs = gpus.size();
-    std::vector<std::vector<std::vector<int>>> chunkGroups(numGPUs);
-
     // Assign chunks to GPUs
+    std::vector<std::vector<std::vector<int>>> chunkGroups(gpus.size());
     for (size_t i = 0; i < chunks.size(); ++i) {
-        size_t gpuIndex = i % numGPUs;
+        size_t gpuIndex = i % gpus.size();
         chunkGroups[gpuIndex].push_back(chunks[i]);
     }
 
@@ -100,25 +101,24 @@ std::vector<int> multiWayMerge(const std::vector<std::vector<std::vector<int>>>&
 
 int main(int argc, char* argv[]) {
     int seed = 42;
-    size_t arraySize = (argc > 1) ? std::atoi(argv[1]) : 1'000'000;
-    size_t bufferSize = (argc > 2) ? std::atoi(argv[2]) : 200;
-    bool buffers2N = (argc > 3) ? std::atoi(argv[3]) : true;
-    printf("Array size: %zu. Buffer size: %zu MB. Double buffer: %s\n", arraySize, bufferSize, buffers2N ? "true" : "false");
+    size_t arraySize = (argc > 1) ? std::atoi(argv[1]) : 20'000'000;
+    size_t bufferSize = (argc > 2) ? std::atoi(argv[2]) : 10;
+    printf("Array size: %zu. Array byte size: %zu MB. Buffer size: %zu MB.\n", arraySize, arraySize * sizeof(int) / (1024 * 1024), bufferSize);
+
+    // Get GPU information
+    bufferSize = bufferSize * 1024 * 1024;
+    std::vector<GPUInfo> gpus = getGPUsInfo(bufferSize, true);
 
     // Allocate and initialize arrays
     int* h_inputArray = (int*)malloc(arraySize * sizeof(int));
     generateRandomArray(h_inputArray, arraySize, seed);
     std::unordered_map<int, int> originalCounts = countElements(h_inputArray, arraySize);
 
-    // Get GPU information
-    bufferSize = bufferSize * 1024 * 1024;
-    std::vector<GPUInfo> gpus = getGPUsInfo(bufferSize, buffers2N);
-
     // Split the array into chunks based on GPU memory availability
     std::vector<std::vector<std::vector<int>>> chunkGroups = splitArray(h_inputArray, arraySize, bufferSize, gpus);
 
     // Sort each chunk on the GPU
-    sortShell(chunkGroups, gpus);
+    sortThrust2N(chunkGroups, gpus);
 
     // Check if each chunk is sorted correctly
     if (checkChunkGroupsSorted(originalCounts, chunkGroups)) printf("Chunks are sorted correctly\n");

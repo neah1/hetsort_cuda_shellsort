@@ -17,3 +17,4 @@
 
 ### TODOs
 - 3n Thrustsorts
+- Test all sorters
