@@ -27,6 +27,7 @@ void sortShell2N(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::v
 void sortThrust2N(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::vector<GPUInfo>& gpus, size_t block_size = 1024 * 1024);
 void sortThrustInplace(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::vector<GPUInfo>& gpus, size_t block_size = 1024 * 1024);
 
+void doubleMemcpy(int* d_array, const int* h_array, size_t arraySize, cudaStream_t stream1, cudaStream_t stream2);
 void InplaceMemcpy(int* htod_source, int* dtoh_source, int* dtoh_dest, size_t num_bytes_htod, size_t num_bytes_dtoh,
                    cudaStream_t htod_stream, cudaStream_t dtoh_stream, size_t block_size);
 

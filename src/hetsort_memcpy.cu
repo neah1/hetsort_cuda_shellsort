@@ -1,5 +1,21 @@
 #include "hetsort.cuh"
 
+void doubleMemcpy(int* d_array, const int* h_array, size_t arraySize, cudaStream_t stream1, cudaStream_t stream2) {
+    size_t halfSize = arraySize / 2;
+    size_t halfSizeBytes = halfSize * sizeof(int);
+    size_t arraySizeBytes = arraySize * sizeof(int);
+
+    // Start async copy of the first half of the array
+    cudaMemcpyAsync(d_array, h_array, halfSizeBytes, cudaMemcpyHostToDevice, stream1);
+
+    // Start async copy of the second half of the array
+    cudaMemcpyAsync(d_array + halfSize, h_array + halfSize, arraySizeBytes - halfSizeBytes, cudaMemcpyHostToDevice, stream2);
+
+    // Wait for both streams to complete
+    cudaStreamSynchronize(stream1);
+    cudaStreamSynchronize(stream2);
+}
+
 void InplaceMemcpy(int* htod_source, int* dtoh_source, int* dtoh_dest, size_t num_bytes_htod, size_t num_bytes_dtoh,
                    cudaStream_t htod_stream, cudaStream_t dtoh_stream, size_t block_size) {
     if (dtoh_dest == nullptr && htod_source == nullptr) {

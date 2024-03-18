@@ -118,7 +118,7 @@ int main(int argc, char* argv[]) {
     std::vector<std::vector<std::vector<int>>> chunkGroups = splitArray(h_inputArray, arraySize, bufferSize, gpus);
 
     // Sort each chunk on the GPU
-    sortThrust2N(chunkGroups, gpus);
+    sortShell(chunkGroups, gpus);
 
     // Check if each chunk is sorted correctly
     if (checkChunkGroupsSorted(originalCounts, chunkGroups)) printf("Chunks are sorted correctly\n");

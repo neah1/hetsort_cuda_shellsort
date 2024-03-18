@@ -12,4 +12,8 @@
 - Deal with GPU variable free memory.
 - Implement ThreadPool for each GPU (with Pragma optimization - OpenMP).
 - openmp for fetching gpu data
-- 2n 3n etc. Different sorters to test thrustsort vs shellsort
+- 2n, inplace, etc. Different sorters to test thrustsort vs shellsort
+- Faster mem transfer by splitting array and using multiple streams. Double copy (from inplace)
+
+### TODOs
+- 3n Thrustsorts
