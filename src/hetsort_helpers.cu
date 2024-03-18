@@ -34,16 +34,21 @@ std::vector<GPUInfo> getGPUsInfo(size_t bufferSize, bool buffers2N) {
     gpus.reserve(numGPUs);
     size_t requiredMem = buffers2N ? bufferSize * 2 : bufferSize;
 
+    #pragma omp parallel for
     for (int i = 0; i < numGPUs; ++i) {
         cudaSetDevice(i);
         size_t freeMem, totalMem;
         cudaMemGetInfo(&freeMem, &totalMem);
-        if (freeMem >= requiredMem) {
-            gpus.emplace_back(i, bufferSize, buffers2N);
-            printf("GPU %d: %zu MB free, %zu MB required, %zu MB total\n", i, freeMem / (1024 * 1024), requiredMem / (1024 * 1024), totalMem / (1024 * 1024));
-        } else {
-            printf("GPU %d: %zu MB free, %zu MB required, %zu MB total - Skipped\n", i, freeMem / (1024 * 1024), requiredMem / (1024 * 1024), totalMem / (1024 * 1024));
+        #pragma omp critical
+        {
+            if (freeMem >= requiredMem) {
+                gpus.emplace_back(i, bufferSize, buffers2N);
+                printf("GPU %d: %zu MB free, %zu MB total\n", i, freeMem / (1024 * 1024), totalMem / (1024 * 1024));
+            } else {
+                printf("GPU %d: %zu MB free, %zu MB total - Skipped\n", i, freeMem / (1024 * 1024), totalMem / (1024 * 1024));
+            }
         }
+
     }
     printf("GPUs available: %zu\n", gpus.size());
     return gpus;
@@ -79,7 +84,7 @@ std::vector<int> multiWayMerge(const std::vector<std::vector<std::vector<int>>>&
     std::vector<std::pair<int*, int*>> sequences;
     for (const auto& group : chunkGroups) {
         for (const auto& chunk : group) {
-            if (!chunk.empty()) sequences.emplace_back(chunk.data(), chunk.data() + chunk.size());
+            if (!chunk.empty()) sequences.emplace_back(const_cast<int*>(chunk.data()), const_cast<int*>(chunk.data()) + chunk.size());
         }
     }
 
@@ -97,13 +102,13 @@ int main(int argc, char* argv[]) {
     int seed = 42;
     size_t arraySize = (argc > 1) ? std::atoi(argv[1]) : 1'000'000;
     size_t bufferSize = (argc > 2) ? std::atoi(argv[2]) : 200;
-    bool buffers2N = (argc > 3) ? std::atoi(argv[3]) : false;
-    printf("Array size: %zu. Buffer size: %zu. Double buffer: %s\n", arraySize, bufferSize, buffers2N ? "true" : "false");
+    bool buffers2N = (argc > 3) ? std::atoi(argv[3]) : true;
+    printf("Array size: %zu. Buffer size: %zu MB. Double buffer: %s\n", arraySize, bufferSize, buffers2N ? "true" : "false");
 
     // Allocate and initialize arrays
     int* h_inputArray = (int*)malloc(arraySize * sizeof(int));
     generateRandomArray(h_inputArray, arraySize, seed);
-    std::unordered_map<int, int> counts = countElements(h_inputArray, arraySize);
+    std::unordered_map<int, int> originalCounts = countElements(h_inputArray, arraySize);
 
     // Get GPU information
     bufferSize = bufferSize * 1024 * 1024;
@@ -113,16 +118,16 @@ int main(int argc, char* argv[]) {
     std::vector<std::vector<std::vector<int>>> chunkGroups = splitArray(h_inputArray, arraySize, bufferSize, gpus);
 
     // Sort each chunk on the GPU
-    sortChunks(chunkGroups, gpus);
+    sortChunkGroups(chunkGroups, gpus);
 
     // Check if each chunk is sorted correctly
-    if (checkChunkGroupsSorted(counts, chunkGroups)) printf("Chunks are sorted correctly\n");
+    if (checkChunkGroupsSorted(originalCounts, chunkGroups)) printf("Chunks are sorted correctly\n");
 
     // Perform multi-way merge
     std::vector<int> merged_result = multiWayMerge(chunkGroups);
 
     // Check if the merged array is sorted correctly
-    if (checkArraySorted(merged_result.data(), counts, arraySize)) printf("Array is sorted correctly\n");
+    if (checkArraySorted(merged_result.data(), originalCounts, arraySize)) printf("Array is sorted correctly\n");
 
     // Clean up
     free(h_inputArray);

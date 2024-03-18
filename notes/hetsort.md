@@ -10,6 +10,6 @@
 - Allocate buffer to thrustsort to make use of 2n sorting.
 - Group chunks into chunk groups to distribute to GPUs. 
 - Deal with GPU variable free memory.
-
-## HET Sort optimization (TODO)
-- Implement ThreadPool for each GPU (+Pragma optimization).
+- Implement ThreadPool for each GPU (with Pragma optimization - OpenMP).
+- openmp for fetching gpu data
+- 2n 3n etc. Different sorters to test thrustsort vs shellsort

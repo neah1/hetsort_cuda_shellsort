@@ -15,8 +15,7 @@ __global__ void shellsortKernel(int* d_array, size_t arraySize, int increment) {
 }
 
 void shellsort(int* d_array, size_t arraySize, cudaStream_t stream) {
-    // Shell's original sequence: {5, 3, 1}
-    // Increment sequence from Ciura (2001)
+    // Increment sequence from Ciura (2001), Shell's original sequence: {5, 3, 1}
     int increments[] = {1750, 701, 301, 132, 57, 23, 10, 4, 1};
     int numThreads = 256;
     int numBlocks = (arraySize + numThreads - 1) / numThreads;
