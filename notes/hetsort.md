@@ -18,4 +18,5 @@
 
 ### TODOs
 - Test all sorters
-- 3n Thrustsorts
+- 3n Thrustsorts (replaces buffer2n)
+- Switch between sorters (and add extra mem for thrust)

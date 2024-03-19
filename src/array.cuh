@@ -1,5 +1,4 @@
 #pragma once
-#include <cuda_runtime.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
