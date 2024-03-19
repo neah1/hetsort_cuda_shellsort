@@ -47,6 +47,7 @@ bool checkChunkGroupsSorted(const std::vector<std::vector<std::vector<int>>>& ch
         }
     }
 
+    printf("Chunks are sorted correctly\n");
     return true;
 }
 
@@ -69,5 +70,6 @@ bool checkArraySorted(const int* sorted, std::unordered_map<int, int> counts, si
         }
     }
 
+    printf("Array is sorted correctly\n");
     return true;
 }

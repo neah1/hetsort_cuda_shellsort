@@ -1,38 +1,36 @@
 #include "hetsort.cuh"
 
-GPUInfo::GPUInfo(int id, size_t bufferSize, bool buffers2N)
-    : id(id), bufferSize(bufferSize), buffers2N(buffers2N), useFirstBuffer(true) {
+GPUInfo::GPUInfo(int id, size_t bufferSize, size_t bufferCount)
+    : id(id), bufferSize(bufferSize), bufferCount(bufferCount), useFirstBuffer(true) {
     cudaSetDevice(id);
     cudaStreamCreate(&stream1);
+    cudaStreamCreate(&stream2);
     cudaStreamCreate(&streamTmp);
     cudaMalloc(&buffer1, bufferSize);
-    if (buffers2N) {
-        cudaStreamCreate(&stream2);
-        cudaMalloc(&buffer2, bufferSize);
-    }
+    if (bufferCount > 1) cudaMalloc(&buffer2, bufferSize);
+    if (bufferCount > 2) cudaMalloc(&bufferTmp, bufferSize);
 }
 
 GPUInfo::~GPUInfo() {
     cudaSetDevice(id);
     cudaStreamDestroy(stream1);
+    cudaStreamDestroy(stream2);
     cudaStreamDestroy(streamTmp);
     cudaFree(buffer1);
-    if (buffers2N) {
-        cudaStreamDestroy(stream2);
-        cudaFree(buffer2);
-    }
+    if (bufferCount > 1) cudaFree(buffer2);
+    if (bufferCount > 2) cudaFree(bufferTmp);
 }
 
 void GPUInfo::toggleBuffer() {
-    if (buffers2N) useFirstBuffer = !useFirstBuffer;
+    useFirstBuffer = !useFirstBuffer;
 }
 
-std::vector<GPUInfo> getGPUsInfo(size_t bufferSize, bool buffers2N) {
+std::vector<GPUInfo> getGPUsInfo(size_t deviceMemory, size_t bufferCount) {
     int numGPUs;
     cudaGetDeviceCount(&numGPUs);
     std::vector<GPUInfo> gpus;
     gpus.reserve(numGPUs);
-    size_t requiredMem = buffers2N ? bufferSize * 2 : bufferSize;
+    size_t bufferSize = deviceMemory / bufferCount;
 
     #pragma omp parallel for
     for (int i = 0; i < numGPUs; ++i) {
@@ -41,32 +39,30 @@ std::vector<GPUInfo> getGPUsInfo(size_t bufferSize, bool buffers2N) {
         cudaMemGetInfo(&freeMem, &totalMem);
         #pragma omp critical
         {
-            if (freeMem >= requiredMem) {
-                gpus.emplace_back(i, bufferSize, buffers2N);
-                printf("GPU %d: %zu MB free, %zu MB total\n", i, freeMem / (1024 * 1024), totalMem / (1024 * 1024));
+            if (deviceMemory <= freeMem) {
+                gpus.emplace_back(i, bufferSize, bufferCount);
+                std::cout << "GPU " << i << ": " << freeMem / (1024 * 1024) << " MB free, " << totalMem / (1024 * 1024) << " MB total\n";
             } else {
-                printf("GPU %d: %zu MB free, %zu MB total - Skipped\n", i, freeMem / (1024 * 1024), totalMem / (1024 * 1024));
+                std::cout << "GPU " << i << ": " << freeMem / (1024 * 1024) << " MB free, " << totalMem / (1024 * 1024) << " MB total - Skipped\n";
             }
         }
 
     }
-    printf("GPUs available: %zu\n", gpus.size());
+    std::cout << "GPUs available: " << gpus.size() << "\n";
     return gpus;
 }
 
-std::vector<std::vector<std::vector<int>>> splitArray(int* unsortedArray, size_t arraySize, size_t bufferSize, std::vector<GPUInfo>& gpus) {
+std::vector<std::vector<std::vector<int>>> splitArray(int* unsortedArray, size_t arraySize, size_t chunkSize, std::vector<GPUInfo>& gpus) {
     std::vector<std::vector<int>> chunks;
-    
-    size_t chunkElementCount = bufferSize / sizeof(int);
-    size_t numChunks = arraySize / chunkElementCount + (arraySize % chunkElementCount != 0);
+    size_t numChunks = arraySize / chunkSize + (arraySize % chunkSize != 0);
     chunks.reserve(numChunks);
 
-    printf("Splitting array into %zu chunks\n", numChunks);
+    std::cout << "Splitting array into " << numChunks << " chunks\n";
 
     // Split the array into chunks
     for (size_t i = 0; i < numChunks; ++i) {
-        size_t startIdx = i * chunkElementCount;
-        size_t endIdx = std::min(startIdx + chunkElementCount, arraySize);
+        size_t startIdx = i * chunkSize;
+        size_t endIdx = std::min(startIdx + chunkSize, arraySize);
         chunks.emplace_back(unsortedArray + startIdx, unsortedArray + endIdx);
     }
 
