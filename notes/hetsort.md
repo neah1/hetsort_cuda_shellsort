@@ -14,7 +14,8 @@
 - openmp for fetching gpu data
 - 2n, inplace, etc. Different sorters to test thrustsort vs shellsort
 - Faster mem transfer by splitting array and using multiple streams. Double copy (from inplace)
+- Thrustsort needs a bigger buffer than data. Around 1.2-1.5 buffer size compared to sorted array. This means that inplace solutions allow for bigger chunkSize than 2N given same amount of freeMem.
 
 ### TODOs
-- 3n Thrustsorts
 - Test all sorters
+- 3n Thrustsorts
