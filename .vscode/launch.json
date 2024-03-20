@@ -8,7 +8,8 @@
             "name": "CUDA C++: Debug",
             "type": "cuda-gdb",
             "request": "launch",
-            "program": "${workspaceFolder}/build/main"
+            "program": "${workspaceFolder}/build/main",
+            "args": "thrustsortInplace 50000000 20 5",
         },
         {
             "name": "CUDA C++: Attach",

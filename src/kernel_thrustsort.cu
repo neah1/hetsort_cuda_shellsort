@@ -15,8 +15,9 @@ public:
     }
 
     int* allocate(std::ptrdiff_t num_bytes) {
-        if (static_cast<size_t>(current_ptr - buffer_start + num_bytes) > buffer_size)
+        if (static_cast<size_t>(current_ptr - buffer_start + num_bytes) > buffer_size) {
             throw std::bad_alloc();
+        }
 
         int* allocation_start = current_ptr;
         current_ptr += num_bytes;

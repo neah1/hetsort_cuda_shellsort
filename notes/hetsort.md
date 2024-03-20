@@ -15,8 +15,11 @@
 - 2n, inplace, etc. Different sorters to test thrustsort vs shellsort
 - Faster mem transfer by splitting array and using multiple streams. Double copy (from inplace)
 - Thrustsort needs a bigger buffer than data. Around 1.2-1.5 buffer size compared to sorted array. This means that inplace solutions allow for bigger chunkSize than 2N given same amount of freeMem.
+- Add extra mem for thrustsort
+- Fix inplace: SOME ERRORS APPEAR RANDOMLY AND THEN GO AWAY WITHOUT ANY CHANGES THE NEXT DAY. PROBABLY DUE TO SOME EXTERNAL VARIABLES IN THE HPC.
+- Optimize chunk so that every pass => same chunk size (NO. small chunks bad)
+- Time to retrieve freeMem info from GPU varies from machine to machine (and daily). Also external factor
 
 ### TODOs
+- 3n Thrustsorts
 - Test all sorters
-- 3n Thrustsorts (replaces buffer2n)
-- Switch between sorters (and add extra mem for thrust)

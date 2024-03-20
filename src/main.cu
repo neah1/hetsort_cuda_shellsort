@@ -4,8 +4,8 @@
 std::string method = "thrustsortInplace";
 size_t arraySize = 20'000'000;
 size_t deviceMemory = 10;
-size_t blockSize = 1;
-const int seed = 0;
+size_t blockSize = 2;
+const int seed = 42;
 
 typedef void CUDASorter(std::vector<std::vector<std::vector<int>>>&, std::vector<GPUInfo>&, size_t);
 

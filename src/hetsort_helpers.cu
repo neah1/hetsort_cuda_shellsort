@@ -73,6 +73,8 @@ std::vector<std::vector<std::vector<int>>> splitArray(int* unsortedArray, size_t
         chunkGroups[gpuIndex].push_back(chunks[i]);
     }
 
+    for (size_t i = 0; i < chunkGroups.size(); ++i) std::cout << "Chunk group " << i << " has " << chunkGroups[i].size() << " chunks\n";
+
     return chunkGroups;
 }
 
