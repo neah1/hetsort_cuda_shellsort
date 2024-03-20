@@ -18,8 +18,8 @@
 - Add extra mem for thrustsort
 - Fix inplace: SOME ERRORS APPEAR RANDOMLY AND THEN GO AWAY WITHOUT ANY CHANGES THE NEXT DAY. PROBABLY DUE TO SOME EXTERNAL VARIABLES IN THE HPC.
 - Optimize chunk so that every pass => same chunk size (NO. small chunks bad)
-- Time to retrieve freeMem info from GPU varies from machine to machine (and daily). Also external factor
+- Time to retrieve freeMem info from GPU varies from machine to machine (and daily). Also external factor.
+- Instead of inplace, double stream speed? Inplace was wonky to begin with.
 
 ### TODOs
 - 3n Thrustsorts
-- Test all sorters

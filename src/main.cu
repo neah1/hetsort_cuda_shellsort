@@ -4,22 +4,19 @@
 std::string method = "thrustsortInplace";
 size_t arraySize = 20'000'000;
 size_t deviceMemory = 10;
-size_t blockSize = 2;
 const int seed = 42;
 
-typedef void CUDASorter(std::vector<std::vector<std::vector<int>>>&, std::vector<GPUInfo>&, size_t);
+typedef void CUDASorter(std::vector<std::vector<std::vector<int>>>&, std::vector<GPUInfo>&);
 
 int main(int argc, char* argv[]) {
     method = (argc > 1) ? argv[1] : method;
     arraySize = (argc > 2) ? std::atoi(argv[2]) : arraySize;
     deviceMemory = (argc > 3) ? std::atoi(argv[3]) : deviceMemory;
-    blockSize = (argc > 4) ? std::atoi(argv[4]) : blockSize;
-    std::cout << "Method: " << method << ". Array size: " << arraySize << ". Array byte size: " << arraySize * sizeof(int) / (1024 * 1024) 
-        << " MB. Device memory: " << deviceMemory << " MB. Block size: " << blockSize << " MB.\n";
+    std::cout << "Method: " << method << ". Array size: " << arraySize << ". Array byte size: " 
+        << arraySize * sizeof(int) / (1024 * 1024) << " MB. Device memory: " << deviceMemory << " MB.\n";
 
     // Convert to MB
     deviceMemory = deviceMemory * 1024 * 1024;
-    blockSize = blockSize * 1024 * 1024;
 
     // Select sorting method
     size_t bufferCount = 2;
@@ -55,7 +52,7 @@ int main(int argc, char* argv[]) {
     std::vector<std::vector<std::vector<int>>> chunkGroups = splitArray(h_inputArray, arraySize, chunkSize, gpus);
 
     // Sort each chunk on the GPU
-    cudaSorter(chunkGroups, gpus, blockSize);
+    cudaSorter(chunkGroups, gpus);
 
     // Check if each chunk is sorted correctly
     checkChunkGroupsSorted(chunkGroups, originalCounts);

@@ -1,15 +1,18 @@
 #include "hetsort.cuh"
 
-void doubleMemcpy(int* d_array, const int* h_array, size_t arraySize, cudaStream_t stream1, cudaStream_t stream2) {
+void doubleMemcpy(int* dest_array, const int* source_array, size_t arraySize, cudaMemcpyKind memcpyMode, cudaStream_t stream1, cudaStream_t stream2) {
     size_t halfSize = arraySize / 2;
     size_t halfByteSize = halfSize * sizeof(int);
     size_t arrayByteSize = arraySize * sizeof(int);
 
+    // Wait for the sorting stream to complete
+    CHECK_CUDA_ERROR(cudaStreamSynchronize(stream1));
+
     // Start async copy of the first half of the array
-    CHECK_CUDA_ERROR(cudaMemcpyAsync(d_array, h_array, halfByteSize, cudaMemcpyHostToDevice, stream1));
+    CHECK_CUDA_ERROR(cudaMemcpyAsync(dest_array, source_array, halfByteSize, memcpyMode, stream1));
 
     // Start async copy of the second half of the array
-    CHECK_CUDA_ERROR(cudaMemcpyAsync(d_array + halfSize, h_array + halfSize, arrayByteSize - halfByteSize, cudaMemcpyHostToDevice, stream2));
+    CHECK_CUDA_ERROR(cudaMemcpyAsync(dest_array + halfSize, source_array + halfSize, arrayByteSize - halfByteSize, memcpyMode, stream2));
 
     // Wait for both streams to complete
     CHECK_CUDA_ERROR(cudaStreamSynchronize(stream1));
