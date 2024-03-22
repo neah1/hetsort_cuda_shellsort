@@ -5,5 +5,7 @@
 - Use GB size instead of arraysize
 - Test memory transfer time vs shellsort sorting time
 - Optimize shellsort kernel
+- Compare with paradis
+- In hetsort, time transfer vs gpu sort time
 
 - limitations: lack of c++ knowledge. Rewriting due to bad practices discovered during optimization.

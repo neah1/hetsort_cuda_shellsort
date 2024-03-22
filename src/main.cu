@@ -45,8 +45,9 @@ int main(int argc, char* argv[]) {
     // Get GPU information
     std::vector<GPUInfo> gpus = getGPUsInfo(deviceMemory, bufferCount);
 
-    // Allocate and initialize arrays
-    int* h_inputArray = (int*)malloc(arraySize * sizeof(int));
+    // Allocate pinned memory and initialize arrays
+    int* h_inputArray;
+    cudaMallocHost((void**)&h_inputArray, arraySize * sizeof(int));
     generateRandomArray(h_inputArray, arraySize, seed);
     std::unordered_map<int, int> originalCounts = countElements(h_inputArray, arraySize);
 
