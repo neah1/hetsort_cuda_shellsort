@@ -20,6 +20,4 @@
 - Optimize chunk so that every pass => same chunk size (NO. small chunks bad)
 - Time to retrieve freeMem info from GPU varies from machine to machine (and daily). Also external factor.
 - Instead of inplace, double stream speed? Inplace was wonky to begin with.
-
-### TODOs
 - 3n Thrustsorts

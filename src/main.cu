@@ -23,7 +23,9 @@ int main(int argc, char* argv[]) {
     CUDASorter* cudaSorter;
     if (method == "thrustsort2N") {
         cudaSorter = sortThrust2N;
-    // } else if (method == "thrustsort3N") {
+    } else if (method == "thrustsort3N") {
+        bufferCount = 3;
+        cudaSorter = sortThrust3N;
     } else if (method == "thrustsortInplace") {
         cudaSorter = sortThrustInplace;
     } else if (method == "shellsort") {

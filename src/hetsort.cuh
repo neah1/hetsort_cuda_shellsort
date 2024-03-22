@@ -23,6 +23,7 @@ std::vector<int> multiWayMerge(const std::vector<std::vector<std::vector<int>>>&
 void sortShell(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::vector<GPUInfo>& gpus);
 void sortShell2N(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::vector<GPUInfo>& gpus);
 void sortThrust2N(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::vector<GPUInfo>& gpus);
+void sortThrust3N(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::vector<GPUInfo>& gpus);
 void sortThrustInplace(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::vector<GPUInfo>& gpus);
 
 void doubleMemcpy(int* dest_array, const int* source_array, size_t arraySize, cudaMemcpyKind memcpyMode, cudaStream_t stream1, cudaStream_t stream2);
