@@ -1,4 +1,7 @@
 #pragma once
+#include <cmath>
+#include <vector>
+#include <algorithm>
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <thrust/device_ptr.h>

@@ -1,9 +1,9 @@
 #include "hetsort.cuh"
 
 // Algorithm parameters
-std::string method = "thrustsortInplace";
-size_t arraySize = 20'000'000;
-size_t deviceMemory = 10;
+std::string method = "shellsort";
+size_t arraySize = 10'000'000;
+size_t deviceMemory = 2;
 const int seed = 42;
 
 typedef void CUDASorter(std::vector<std::vector<std::vector<int>>>&, std::vector<GPUInfo>&);
@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
     checkArraySorted(merged_result.data(), originalCounts, arraySize);
 
     // Clean up
-    free(h_inputArray);
+    cudaFreeHost(h_inputArray);
     return 0;
 }
 
