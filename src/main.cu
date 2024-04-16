@@ -2,6 +2,7 @@
 
 // Algorithm parameters
 std::string method = "shellsort";
+std::string distribution = "uniform";
 size_t arraySize = 10'000'000;
 size_t deviceMemory = 2;
 const int seed = 42;
@@ -10,10 +11,11 @@ typedef void CUDASorter(std::vector<std::vector<std::vector<int>>>&, std::vector
 
 int main(int argc, char* argv[]) {
     method = (argc > 1) ? argv[1] : method;
-    arraySize = (argc > 2) ? std::atoi(argv[2]) : arraySize;
-    deviceMemory = (argc > 3) ? std::atoi(argv[3]) : deviceMemory;
-    std::cout << "Method: " << method << ". Array size: " << arraySize << ". Array byte size: " 
-        << arraySize * sizeof(int) / (1024 * 1024) << " MB. Device memory: " << deviceMemory << " MB.\n";
+    distribution = (argc > 2) ? argv[2] : distribution;
+    arraySize = (argc > 3) ? std::atoi(argv[3]) : arraySize;
+    deviceMemory = (argc > 4) ? std::atoi(argv[4]) : deviceMemory;
+    printf("Method: %s. Distribution: %s. Array size: %zu. Array byte size: %zu MB. Device memory: %zu MB.\n", 
+    method.c_str(), distribution.c_str(), arraySize, arraySize * sizeof(int) / (1024 * 1024), deviceMemory);
 
     // Convert to MB
     deviceMemory = deviceMemory * 1024 * 1024;
@@ -48,7 +50,7 @@ int main(int argc, char* argv[]) {
     // Allocate pinned memory and initialize arrays
     int* h_inputArray;
     cudaMallocHost((void**)&h_inputArray, arraySize * sizeof(int));
-    generateRandomArray(h_inputArray, arraySize, seed);
+    generateRandomArray(h_inputArray, arraySize, seed, distribution);
     std::unordered_map<int, int> originalCounts = countElements(h_inputArray, arraySize);
 
     // Split the array into chunks based on GPU memory availability
@@ -120,39 +122,4 @@ int main(int argc, char* argv[]) {
 //     // Destroy CUDA events
 //     cudaEventDestroy(start);
 //     cudaEventDestroy(stop);
-// }
-
-// int main() {
-//     // Allocate and initialize arrays
-//     size_t arrayByteSize = arraySize * sizeof(int);
-//     int* h_inputArray = (int*)malloc(arrayByteSize);
-//     int* h_outputArray = (int*)malloc(arrayByteSize);
-//     generateRandomArray(h_inputArray, arraySize, seed);
-
-//     // Run sorting algorithms
-//     runSort("shellsort", GPUSort, h_inputArray, h_outputArray);
-//     runSort("thrustsort", GPUSort, h_inputArray, h_outputArray);
-
-//     // Free host memory
-//     free(h_inputArray);
-//     free(h_outputArray);
-//     return 0;
-// }
-
-// void GPUSort(const char* sortName, int* h_inputArray, int* h_outputArray, size_t arraySize, bool saveOutput) {
-//     int* d_array;
-//     size_t arrayByteSize = arraySize * sizeof(int);
-//     cudaStream_t stream;
-//     cudaStreamCreate(&stream);
-
-//     CHECK_CUDA_ERROR(cudaMalloc((void**)&d_array, arrayByteSize));
-//     CHECK_CUDA_ERROR(cudaMemcpyAsync(d_array, h_inputArray, arrayByteSize, cudaMemcpyHostToDevice, stream));
-
-//     if (std::strcmp(sortName, "shellsort") == 0) shellsort(d_array, arraySize, stream);
-//     if (std::strcmp(sortName, "thrustsort") == 0) thrustsort(d_array, arraySize, stream);
-
-//     if (saveOutput) CHECK_CUDA_ERROR(cudaMemcpyAsync(h_outputArray, d_array, arrayByteSize, cudaMemcpyDeviceToHost, stream));
-//     cudaStreamSynchronize(stream);
-//     cudaStreamDestroy(stream);
-//     cudaFree(d_array);
 // }
