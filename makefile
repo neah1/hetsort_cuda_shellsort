@@ -4,7 +4,7 @@ BUILD_DIR := build
 TARGET := $(BUILD_DIR)/main
 NSYS_REPORT := $(BUILD_DIR)/profile.nsys-rep
 SRCS := $(wildcard $(SRC_DIR)/*.cpp $(SRC_DIR)/*.cu)
-OMP_FLAGS := -Xcompiler -fopenmp
+OMP_FLAGS := -Xcompiler -fopenmp --expt-relaxed-constexpr
 
 # Phony targets
 .PHONY: build rebuild run rerun clean profile-nsys view-report

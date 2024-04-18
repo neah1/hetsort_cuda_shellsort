@@ -55,11 +55,10 @@ std::vector<GPUInfo> getGPUsInfo(size_t deviceMemory, size_t bufferCount) {
 std::vector<std::vector<std::vector<int>>> splitArray(int* unsortedArray, size_t arraySize, size_t chunkSize, std::vector<GPUInfo>& gpus) {
     std::vector<std::vector<int>> chunks;
     size_t numChunks = arraySize / chunkSize + (arraySize % chunkSize != 0);
-    chunks.reserve(numChunks);
-
-    std::cout << "Splitting array into " << numChunks << " chunks\n";
-
+    std::cout << "Number of chunks: " << numChunks << "\n";
+    
     // Split the array into chunks
+    chunks.reserve(numChunks);
     for (size_t i = 0; i < numChunks; ++i) {
         size_t startIdx = i * chunkSize;
         size_t endIdx = std::min(startIdx + chunkSize, arraySize);
@@ -72,8 +71,6 @@ std::vector<std::vector<std::vector<int>>> splitArray(int* unsortedArray, size_t
         size_t gpuIndex = i % gpus.size();
         chunkGroups[gpuIndex].push_back(chunks[i]);
     }
-
-    for (size_t i = 0; i < chunkGroups.size(); ++i) std::cout << "Chunk group " << i << " has " << chunkGroups[i].size() << " chunks\n";
 
     return chunkGroups;
 }

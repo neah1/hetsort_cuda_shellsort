@@ -1,4 +1,5 @@
 #include "kernel.cuh"
+#include "bitonic_sort.cuh"
 
 std::vector<size_t> generateIncrements(size_t arraySize) {
     std::vector<size_t> increments = {1, 4, 10, 23, 57, 132, 301, 701, 1750};
@@ -48,10 +49,11 @@ __device__ void bitonicCompare(int* values, int i, int j, bool dir) {
 __global__ void bitonicSortKernel(int* d_array, size_t arraySize) {
     extern __shared__ int shared[];
     size_t tid = threadIdx.x;
-    size_t idx = blockIdx.x * blockDim.x + tid;
+    size_t idx = blockIdx.x * blockDim.x * 2 + tid;
 
     // Load elements into shared memory. Pad with maximum value if this is the last segment and it's not full
-    shared[tid] = (idx < arraySize) ? d_array[idx] : INT_MAX;
+    shared[2 * tid] = (idx < arraySize) ? d_array[idx] : INT_MAX;
+    shared[2 * tid + 1] = (idx + 1 < arraySize) ? d_array[idx + 1] : INT_MAX;
     __syncthreads();
 
     // Bitonic sort in shared memory
@@ -63,66 +65,16 @@ __global__ void bitonicSortKernel(int* d_array, size_t arraySize) {
             __syncthreads();
         }
     }
+
     // Write sorted elements back to global memory
-    if (idx < arraySize) d_array[idx] = shared[tid];
-}
-
-__device__ void simpleMerge(int* shared, size_t segmentSize) {
-    size_t index1 = threadIdx.x;
-    size_t index2 = segmentSize + index1;
-
-    if (index1 < segmentSize) {
-        if (shared[index1] > shared[index2]) {
-            int temp = shared[index1];
-            shared[index1] = shared[index2];
-            shared[index2] = temp;
-        }
-    }
-}
-
-__global__ void mergesortKernel(int* d_array, size_t arraySize, size_t segmentSize) {
-    extern __shared__ int shared[];
-    size_t tid = threadIdx.x;
-    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-    // Load data into shared memory, padding if necessary
-    if (idx < arraySize) {
-        shared[tid] = d_array[idx];
-    } else {
-        shared[tid] = INT_MAX;
-    }
-    __syncthreads();
-
-    // Perform simple in-place merge
-    simpleMerge(shared, segmentSize);
-    __syncthreads();
-
-    // Write merged segment back to global memory
-    if (idx < arraySize) d_array[idx] = shared[tid];
-}
-
-void mergesort(int* d_array, size_t arraySize, size_t initialSegmentSize, cudaStream_t stream) {
-    size_t segmentSize = initialSegmentSize;
-    size_t numSegments = (arraySize + segmentSize - 1) / segmentSize;
-
-    while (numSegments > 1) {
-        size_t mergedSegmentSize = segmentSize * 2; // Size of the segment after merging
-        size_t numBlocks = (arraySize + mergedSegmentSize - 1) / mergedSegmentSize; // One block per merged segment
-        size_t sharedMemorySize = mergedSegmentSize * sizeof(int); // Allocate enough shared memory for merged segment
-
-        mergesortKernel<<<numBlocks, segmentSize, sharedMemorySize, stream>>>(d_array, arraySize, segmentSize);
-
-        cudaStreamSynchronize(stream); // Ensure all merges are complete before next iteration
-
-        segmentSize = mergedSegmentSize; // Update segment size for next iteration
-        numSegments = (arraySize + segmentSize - 1) / segmentSize; // Update number of segments
-    }
+    if (idx < arraySize) d_array[idx] = shared[2 * tid];
+    if (idx + 1 < arraySize) d_array[idx + 1] = shared[2 * tid + 1];
 }
 
 void shellsort(int* d_array, size_t arraySize, cudaStream_t stream) {
     const size_t MAX_THREADS_PER_BLOCK = 1024;
     const size_t BITONIC_SORT_THRESHOLD = 2048;
-    size_t numThreads, numBlocks, blockSize;
+    size_t numThreads, numBlocks;
 
     std::vector<size_t> increments = generateIncrements(arraySize);
 
@@ -132,13 +84,12 @@ void shellsort(int* d_array, size_t arraySize, cudaStream_t stream) {
             numBlocks = (increment + numThreads - 1) / numThreads;
             shellsortKernel<<<numBlocks, numThreads, 0, stream>>>(d_array, arraySize, increment);
         } else {
-            blockSize = BITONIC_SORT_THRESHOLD;
-            numBlocks = (arraySize + blockSize - 1) / blockSize;
-            size_t sharedMemSize = blockSize * sizeof(int);
-            bitonicSortKernel<<<numBlocks, blockSize, sharedMemSize, stream>>>(d_array, arraySize);
+            bitonic::sort(d_array, arraySize, stream);
+            // blockSize = BITONIC_SORT_THRESHOLD;
+            // numBlocks = (arraySize + blockSize - 1) / blockSize;
+            // size_t sharedMemSize = blockSize * sizeof(int);
+            // bitonicSortKernel<<<MAX_THREADS_PER_BLOCK, numBlocks, sharedMemSize, stream>>>(d_array, arraySize);
             break;
         }
     }
-
-    mergesort(d_array, arraySize, blockSize, stream);
 }

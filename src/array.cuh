@@ -1,12 +1,13 @@
 #pragma once
-#include <string>
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-#include <algorithm>
-#include <unordered_map>
 #include <vector>
 #include <random>
+#include <chrono>
+#include <string>
+#include <time.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <algorithm>
+#include <unordered_map>
 
 void generateRandomArray(int* array, size_t arraySize, int seed, std::string distribution);
 std::unordered_map<int, int> countElements(const int* array, size_t arraySize);
