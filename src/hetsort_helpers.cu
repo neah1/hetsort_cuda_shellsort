@@ -1,7 +1,9 @@
 #include "hetsort.cuh"
 
 GPUInfo::GPUInfo(int id, size_t bufferSize, size_t bufferCount)
-    : id(id), bufferSize(bufferSize), bufferCount(bufferCount), useFirstBuffer(true) {
+        : id(id), bufferSize(bufferSize), bufferCount(bufferCount), useFirstBuffer(true) {}
+
+void GPUInfo::initialize() {
     cudaSetDevice(id);
     cudaStreamCreate(&stream1);
     cudaStreamCreate(&stream2);
@@ -11,14 +13,14 @@ GPUInfo::GPUInfo(int id, size_t bufferSize, size_t bufferCount)
     if (bufferCount > 2) cudaMalloc(&bufferTmp, bufferSize);
 }
 
-GPUInfo::~GPUInfo() {
+void GPUInfo::destroy() {
     cudaSetDevice(id);
-    cudaStreamDestroy(stream1);
-    cudaStreamDestroy(stream2);
-    cudaStreamDestroy(streamTmp);
-    cudaFree(buffer1);
-    if (bufferCount > 1) cudaFree(buffer2);
-    if (bufferCount > 2) cudaFree(bufferTmp);
+    if (stream1 != nullptr) cudaStreamDestroy(stream1);
+    if (stream2 != nullptr) cudaStreamDestroy(stream2);
+    if (streamTmp != nullptr) cudaStreamDestroy(streamTmp);
+    if (buffer1 != nullptr) cudaFree(buffer1);
+    if (buffer2 != nullptr) cudaFree(buffer2);
+    if (bufferTmp != nullptr) cudaFree(bufferTmp);
 }
 
 void GPUInfo::toggleBuffer() {
@@ -32,7 +34,7 @@ std::vector<GPUInfo> getGPUsInfo(size_t deviceMemory, size_t bufferCount) {
     gpus.reserve(numGPUs);
     size_t bufferSize = deviceMemory / bufferCount;
 
-    #pragma omp parallel for
+    #pragma omp parallel for num_threads(numGPUs)
     for (int i = 0; i < numGPUs; ++i) {
         cudaSetDevice(i);
         size_t freeMem, totalMem;

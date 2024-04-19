@@ -14,8 +14,7 @@ void doubleMemcpy(int* dest_array, const int* source_array, size_t arraySize, cu
     // Start async copy of the second half of the array
     CHECK_CUDA_ERROR(cudaMemcpyAsync(dest_array + halfSize, source_array + halfSize, arrayByteSize - halfByteSize, memcpyMode, stream2));
 
-    // Wait for both streams to complete
-    CHECK_CUDA_ERROR(cudaStreamSynchronize(stream1));
+    // Wait for tmp stream to complete
     CHECK_CUDA_ERROR(cudaStreamSynchronize(stream2));
 }
 

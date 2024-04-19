@@ -12,7 +12,8 @@ struct GPUInfo {
     cudaStream_t stream1, stream2, streamTmp;
 
     GPUInfo(int id, size_t bufferSize, size_t bufferCount);
-    ~GPUInfo();
+    void initialize();
+    void destroy();
     void toggleBuffer();
 };
 

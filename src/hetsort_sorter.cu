@@ -1,12 +1,11 @@
 #include "hetsort.cuh"
 
 void sortThrust2N(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::vector<GPUInfo>& gpus) {
-    omp_set_num_threads(gpus.size());
-    #pragma omp parallel for
-    for (int g = 0; g < static_cast<int>(chunkGroups.size()); ++g) {
+    #pragma omp parallel for num_threads(gpus.size())
+    for (int g = 0; g < gpus.size(); ++g) {
         auto& chunks = chunkGroups[g];
         GPUInfo& gpu = gpus[g];
-        cudaSetDevice(gpu.id);
+        gpu.initialize();
 
         for (size_t i = 0; i < chunks.size(); ++i) {
             int* mainBuffer = gpu.useFirstBuffer ? gpu.buffer1 : gpu.buffer2;
@@ -28,17 +27,18 @@ void sortThrust2N(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::
 
             gpu.toggleBuffer();
         }
+
+        cudaStreamSynchronize(gpu.stream1);
+        gpu.destroy();
     }
-    for (auto& gpu : gpus) cudaStreamSynchronize(gpu.stream1);
 }
 
 void sortThrust3N(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::vector<GPUInfo>& gpus) {
-    omp_set_num_threads(gpus.size());
-    #pragma omp parallel for
-    for (int g = 0; g < static_cast<int>(chunkGroups.size()); ++g) {
+    #pragma omp parallel for num_threads(gpus.size())
+    for (int g = 0; g < gpus.size(); ++g) {
         auto& chunks = chunkGroups[g];
         GPUInfo& gpu = gpus[g];
-        cudaSetDevice(gpu.id);
+        gpu.initialize();
 
         for (size_t i = 0; i < chunks.size(); ++i) {
             int* mainBuffer = gpu.useFirstBuffer ? gpu.buffer1 : gpu.buffer2;
@@ -62,17 +62,18 @@ void sortThrust3N(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::
 
             gpu.toggleBuffer();
         }
+        
+        cudaStreamSynchronize(gpu.stream1);
+        gpu.destroy();
     }
-    for (auto& gpu : gpus) cudaStreamSynchronize(gpu.stream1);
 }
 
 void sortThrustInplace(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::vector<GPUInfo>& gpus) {
-    omp_set_num_threads(gpus.size());
-    #pragma omp parallel for
-    for (int g = 0; g < static_cast<int>(chunkGroups.size()); ++g) {
+    #pragma omp parallel for num_threads(gpus.size())
+    for (int g = 0; g < gpus.size(); ++g) {
         auto& chunks = chunkGroups[g];
         GPUInfo& gpu = gpus[g];
-        cudaSetDevice(gpu.id);
+        gpu.initialize();
 
         for (size_t i = 0; i < chunks.size(); ++i) {
             if (i == 0) 
@@ -85,17 +86,18 @@ void sortThrustInplace(std::vector<std::vector<std::vector<int>>>& chunkGroups, 
             if (i + 1 < chunks.size()) 
                 doubleMemcpy(gpu.buffer1, chunks[i + 1].data(), chunks[i + 1].size(), cudaMemcpyHostToDevice, gpu.stream1, gpu.streamTmp);
         }
+
+        cudaStreamSynchronize(gpu.stream1);
+        gpu.destroy();
     }
-    for (auto& gpu : gpus) cudaStreamSynchronize(gpu.stream1);
 }
 
 void sortThrustInplaceMemcpy(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::vector<GPUInfo>& gpus) {
-    omp_set_num_threads(gpus.size());
-    #pragma omp parallel for
-    for (int g = 0; g < static_cast<int>(chunkGroups.size()); ++g) {
+    #pragma omp parallel for num_threads(gpus.size())
+    for (int g = 0; g < gpus.size(); ++g) {
         auto& chunks = chunkGroups[g];
         GPUInfo& gpu = gpus[g];
-        cudaSetDevice(gpu.id);
+        gpu.initialize();
 
         for (size_t i = 0; i < chunks.size(); ++i) {
             if (i == 0)
@@ -107,17 +109,18 @@ void sortThrustInplaceMemcpy(std::vector<std::vector<std::vector<int>>>& chunkGr
             size_t nextChunkSize = (i + 1 < chunks.size()) ? chunks[i + 1].size() * sizeof(int) : 0;
             InplaceMemcpy(nextChunkData, gpu.buffer1, chunks[i].data(), nextChunkSize, chunks[i].size() * sizeof(int), gpu.stream1, gpu.streamTmp, 10 * 1024 * 1024);
         }
+
+        cudaStreamSynchronize(gpu.stream1);
+        gpu.destroy();
     }
-    for (auto& gpu : gpus) cudaStreamSynchronize(gpu.stream1);
 }
 
 void sortShell(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::vector<GPUInfo>& gpus) {
-    omp_set_num_threads(gpus.size());
-    #pragma omp parallel for
-    for (int g = 0; g < static_cast<int>(chunkGroups.size()); ++g) {
+    #pragma omp parallel for num_threads(gpus.size())
+    for (int g = 0; g < gpus.size(); ++g) {
         auto& chunks = chunkGroups[g];
         GPUInfo& gpu = gpus[g];
-        cudaSetDevice(gpu.id);
+        gpu.initialize();
 
         for (size_t i = 0; i < chunks.size(); ++i) {
             if (i == 0) 
@@ -130,17 +133,18 @@ void sortShell(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::vec
             if (i + 1 < chunks.size()) 
                 doubleMemcpy(gpu.buffer1, chunks[i + 1].data(), chunks[i + 1].size(), cudaMemcpyHostToDevice, gpu.stream1, gpu.streamTmp);
         }
+
+        cudaStreamSynchronize(gpu.stream1);
+        gpu.destroy();
     }
-    for (auto& gpu : gpus) cudaStreamSynchronize(gpu.stream1);
 }
 
 void sortShell2N(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::vector<GPUInfo>& gpus) {
-    omp_set_num_threads(gpus.size());
-    #pragma omp parallel for
-    for (int g = 0; g < static_cast<int>(chunkGroups.size()); ++g) {
+    #pragma omp parallel for num_threads(gpus.size())
+    for (int g = 0; g < gpus.size(); ++g) {
         auto& chunks = chunkGroups[g];
         GPUInfo& gpu = gpus[g];
-        cudaSetDevice(gpu.id);
+        gpu.initialize();
 
         for (size_t i = 0; i < chunks.size(); ++i) {
             int* mainBuffer = gpu.useFirstBuffer ? gpu.buffer1 : gpu.buffer2;
@@ -169,18 +173,20 @@ void sortShell2N(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::v
             // Toggle the buffer for the next chunk
             gpu.toggleBuffer();
         }
-    }
-    for (auto& gpu : gpus) {
+
+        // Wait for all streams to finish
         cudaStreamSynchronize(gpu.stream1);
         cudaStreamSynchronize(gpu.stream2);
+
+        // Destroy the GPU buffers and streams
+        gpu.destroy();
     }
 }
-
 
 std::vector<int> sortKernel(const std::string& method, int* h_inputArray, size_t arraySize, std::vector<GPUInfo>& gpus) {
     std::vector<int> h_outputArray(arraySize);
     GPUInfo& gpu = gpus[0];
-    cudaSetDevice(gpu.id);
+    gpu.initialize();
 
     doubleMemcpy(gpu.buffer1, h_inputArray, arraySize, cudaMemcpyHostToDevice, gpu.stream1, gpu.streamTmp);
 
@@ -191,7 +197,8 @@ std::vector<int> sortKernel(const std::string& method, int* h_inputArray, size_t
 
     doubleMemcpy(h_outputArray.data(), gpu.buffer1, arraySize, cudaMemcpyDeviceToHost, gpu.stream1, gpu.streamTmp);
 
-    for (auto& gpu : gpus) cudaStreamSynchronize(gpu.stream1);
+    cudaStreamSynchronize(gpu.stream1);
+    gpu.destroy();
 
     return h_outputArray;
 }

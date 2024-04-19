@@ -1,6 +1,5 @@
 ### TODOs: Benchmarking
 
-cudamalloc in profile
 - test different bitonic CUDA sort
 
 KERNEL SHELL VS THRUST:

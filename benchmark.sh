@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Open output redirection
+exec > console_output.txt 2>&1
+
 # Function to run a benchmark with given parameters
 run_benchmark() {
     local method=$1
