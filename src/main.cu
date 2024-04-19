@@ -1,19 +1,11 @@
 #include "hetsort.cuh"
 
 // Algorithm parameters
-std::string method = "shellsort2N";
-std::string distribution = "uniform";
-size_t arraySize = 1'000'000;
-size_t deviceMemory = 1'000;
-
-// Algorithm parameters
-const int seed = 42;
-const int warmup = 1;
-const int iterations = 2;
-
+std::string method, distribution;
+size_t arraySize, deviceMemory, seed, warmup, iterations;
 typedef void CUDASorter(std::vector<std::vector<std::vector<int>>>&, std::vector<GPUInfo>&);
 
-std::vector<int> runSort(CUDASorter cudaSorter, int* h_inputArray, size_t arraySize, size_t chunkSize, std::vector<GPUInfo>& gpus) {
+std::vector<int> runSort(CUDASorter cudaSorter, int* h_inputArray, size_t chunkSize, std::vector<GPUInfo>& gpus) {
     nvtxRangePush("ArraySplit phase");
     std::vector<std::vector<std::vector<int>>> chunkGroups = splitArray(h_inputArray, arraySize, chunkSize, gpus);
     nvtxRangePop();
@@ -29,7 +21,7 @@ std::vector<int> runSort(CUDASorter cudaSorter, int* h_inputArray, size_t arrayS
     return h_outputArray;
 }
 
-void runSortingAlgorithm(CUDASorter cudaSorter, int* h_inputArray, size_t arraySize, size_t chunkSize, std::vector<GPUInfo>& gpus) {
+void runSortingAlgorithm(CUDASorter cudaSorter, int* h_inputArray, size_t chunkSize, std::vector<GPUInfo>& gpus) {
     // Count the number of elements in the input array
     std::unordered_map<int, int> originalCounts = countElements(h_inputArray, arraySize);
 
@@ -38,7 +30,7 @@ void runSortingAlgorithm(CUDASorter cudaSorter, int* h_inputArray, size_t arrayS
         if (method.find("Kernel") == 0)
             sortKernel(method, h_inputArray, arraySize, gpus);
         else
-            runSort(cudaSorter, h_inputArray, arraySize, chunkSize, gpus);
+            runSort(cudaSorter, h_inputArray, chunkSize, gpus);
 
     for (int i = 0; i < iterations; i++) {
         // Start timing
@@ -49,7 +41,7 @@ void runSortingAlgorithm(CUDASorter cudaSorter, int* h_inputArray, size_t arrayS
         if (method.find("Kernel") == 0)
             h_outputArray = sortKernel(method, h_inputArray, arraySize, gpus);
         else
-            h_outputArray = runSort(cudaSorter, h_inputArray, arraySize, chunkSize, gpus);
+            h_outputArray = runSort(cudaSorter, h_inputArray, chunkSize, gpus);
         nvtxRangePop();
 
         // Stop timing
@@ -65,7 +57,7 @@ void runSortingAlgorithm(CUDASorter cudaSorter, int* h_inputArray, size_t arrayS
     }
 }
 
-CUDASorter* selectSortingMethod(const std::string& method, size_t& deviceMemory, size_t& bufferCount, size_t& chunkSize) {
+CUDASorter* selectSortingMethod(size_t& bufferCount, size_t& chunkSize) {
     CUDASorter* cudaSorter = nullptr;
     deviceMemory = deviceMemory * 1024 * 1024;
     if (method == "thrustsort2N") {
@@ -76,6 +68,9 @@ CUDASorter* selectSortingMethod(const std::string& method, size_t& deviceMemory,
         bufferCount = 3;
     } else if (method == "thrustsortInplace") {
         cudaSorter = sortThrustInplace;
+        bufferCount = 2;
+    } else if (method == "sortThrustInplaceMemcpy") {
+        cudaSorter = sortThrustInplaceMemcpy;
         bufferCount = 2;
     } else if (method == "shellsort") {
         cudaSorter = sortShell;
@@ -98,13 +93,10 @@ CUDASorter* selectSortingMethod(const std::string& method, size_t& deviceMemory,
     return cudaSorter;
 }
 
-void benchmark(const std::string& method, const std::string& distribution, size_t arraySize, size_t deviceMemory) {
-    printf("Method: %s. Distribution: %s. Array size: %zu. Array byte size: %zu MB. Device memory: %zu MB. Warmup: %d. Iterations: %d.\n", 
-        method.c_str(), distribution.c_str(), arraySize, arraySize * sizeof(int) / (1024 * 1024), deviceMemory, warmup, iterations);
-    
+void benchmark() {
     // Select sorting method
     size_t bufferCount, chunkSize;
-    CUDASorter* cudaSorter = selectSortingMethod(method, deviceMemory, bufferCount, chunkSize);
+    CUDASorter* cudaSorter = selectSortingMethod(bufferCount, chunkSize);
 
     nvtxRangePush("GPU information");
     std::vector<GPUInfo> gpus = getGPUsInfo(deviceMemory, bufferCount);
@@ -117,39 +109,29 @@ void benchmark(const std::string& method, const std::string& distribution, size_
     nvtxRangePop();
 
     // Run sorting algorithm
-    runSortingAlgorithm(cudaSorter, h_inputArray, arraySize, chunkSize, gpus);
+    runSortingAlgorithm(cudaSorter, h_inputArray, chunkSize, gpus);
 
     // Clean up
     cudaFreeHost(h_inputArray);
 }
 
-void fullBenchmark() {
-    std::vector<std::string> methods = {"thrustsort2N", "thrustsort3N", "thrustsortInplace", "shellsort", "shellsort2N"};
-    std::vector<std::string> distributions = {"uniform", "normal", "sorted", "reverse_sorted", "nearly_sorted"};
-    std::vector<size_t> arraySizesKernel = {1'000'000, 10'000'000};
-    std::vector<size_t> arraySizes = {1'000'000, 10'000'000};
-    std::vector<size_t> deviceMemories = {500, 1000, 2000};
-
-    for (const auto& method : methods) {
-        for (const auto& distribution : distributions) {
-            for (const auto& arraySize : arraySizesKernel) {
-                benchmark(method, distribution, arraySize, 0);
-            }
-            for (const auto& arraySize : arraySizes) {
-                for (const auto& deviceMemory : deviceMemories) {
-                    benchmark(method, distribution, arraySize, deviceMemory);
-                }
-            }
-        }
-    }
-}
-
 int main(int argc, char* argv[]) {
-    method = (argc > 1) ? argv[1] : method;
-    distribution = (argc > 2) ? argv[2] : distribution;
-    arraySize = (argc > 3) ? std::atoi(argv[3]) : arraySize;
-    deviceMemory = (argc > 4) ? std::atoi(argv[4]) : deviceMemory;
+    method = (argc > 1) ? argv[1] : "thrustsort2N";
+    distribution = (argc > 2) ? argv[2] : "uniform";
+    arraySize = (argc > 3) ? std::atoi(argv[3]) : 100'000'000;
+    deviceMemory = (argc > 4) ? std::atoi(argv[4]) : 500;
 
-    benchmark(method, distribution, arraySize, deviceMemory);
+    seed = (argc > 5) ? std::atoi(argv[5]) : 42;
+    warmup = (argc > 6) ? std::atoi(argv[6]) : 1;
+    iterations = (argc > 7) ? std::atoi(argv[7]) : 3;
+
+    std::string label = "Benchmark - Method: " + method + ", Distribution: " + distribution + 
+                        ", Array Size: " + std::to_string(arraySize) + 
+                        ", Array Byte Size: " + std::to_string(arraySize * sizeof(int) / (1024 * 1024)) + " MB" +
+                        ", Device Memory: " + std::to_string(deviceMemory) + " MB" +
+                        ", Warmup: " + std::to_string(warmup) + ", Iterations: " + std::to_string(iterations);
+    printf(label.c_str());
+
+    benchmark();
     return 0;
 }
