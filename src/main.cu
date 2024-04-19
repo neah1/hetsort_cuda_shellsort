@@ -27,7 +27,7 @@ void runSortingAlgorithm(CUDASorter cudaSorter, int* h_inputArray, size_t chunkS
 
     // Warmup the GPU
     for (int i = 0; i < warmup; i++) 
-        if (method.find("Kernel") == 0)
+        if (method.find("Kernel") != std::string::npos)
             sortKernel(method, h_inputArray, arraySize, gpus);
         else
             runSort(cudaSorter, h_inputArray, chunkSize, gpus);
@@ -38,7 +38,7 @@ void runSortingAlgorithm(CUDASorter cudaSorter, int* h_inputArray, size_t chunkS
         
         nvtxRangePush("Sorting algorithm");
         std::vector<int> h_outputArray;
-        if (method.find("Kernel") == 0)
+        if (method.find("Kernel") != std::string::npos)
             h_outputArray = sortKernel(method, h_inputArray, arraySize, gpus);
         else
             h_outputArray = runSort(cudaSorter, h_inputArray, chunkSize, gpus);
@@ -82,14 +82,13 @@ CUDASorter* selectSortingMethod(size_t& bufferCount, size_t& chunkSize) {
         deviceMemory = arraySize * sizeof(int);
         bufferCount = 1;
     } else if (method == "thrustsortKernel") {
-        deviceMemory = 3 * arraySize * sizeof(int);
+        deviceMemory = 2 * arraySize * sizeof(int);
         bufferCount = 2;
     } else {
         std::cerr << "Invalid sorting method.\n";
         exit(EXIT_FAILURE);
     }
     chunkSize = (deviceMemory / bufferCount) / sizeof(int);
-    if (method.find("thrust") == 0) chunkSize = chunkSize * 0.80;
     return cudaSorter;
 }
 
@@ -121,15 +120,15 @@ int main(int argc, char* argv[]) {
     arraySize = (argc > 3) ? std::atoi(argv[3]) : 100'000'000;
     deviceMemory = (argc > 4) ? std::atoi(argv[4]) : 500;
 
-    seed = (argc > 5) ? std::atoi(argv[5]) : 42;
+    iterations = (argc > 5) ? std::atoi(argv[5]) : 3;
     warmup = (argc > 6) ? std::atoi(argv[6]) : 1;
-    iterations = (argc > 7) ? std::atoi(argv[7]) : 3;
+    seed = (argc > 7) ? std::atoi(argv[7]) : 42;
 
-    std::string label = "Benchmark - Method: " + method + ", Distribution: " + distribution + 
+    std::string label = "Method: " + method + ", Distribution: " + distribution + 
                         ", Array Size: " + std::to_string(arraySize) + 
                         ", Array Byte Size: " + std::to_string(arraySize * sizeof(int) / (1024 * 1024)) + " MB" +
                         ", Device Memory: " + std::to_string(deviceMemory) + " MB" +
-                        ", Warmup: " + std::to_string(warmup) + ", Iterations: " + std::to_string(iterations);
+                        ", Iterations: " + std::to_string(iterations) + ", Warmup: " + std::to_string(warmup) + "\n";
     printf(label.c_str());
 
     benchmark();

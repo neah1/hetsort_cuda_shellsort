@@ -9,7 +9,7 @@
             "type": "cuda-gdb",
             "request": "launch",
             "program": "${workspaceFolder}/build/main",
-            "args": "thrustsortInplace 50000000 20",
+            "args": "thrustsortKernel uniform 10000000",
         },
         {
             "name": "CUDA C++: Attach",

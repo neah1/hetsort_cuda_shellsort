@@ -27,6 +27,13 @@ public:
     void deallocate(int* ptr, size_t n) {}
 };
 
+struct MyCompare {
+    __host__ __device__
+    bool operator()(const int& a, const int& b) const {
+        return a < b;
+    }
+};
+
 void thrustsort(int* d_array, size_t arraySize, int* buffer, size_t bufferSize, cudaStream_t stream) {
     // Create device pointer for the array to be sorted
     thrust::device_ptr<int> array_ptr(d_array);
@@ -38,5 +45,5 @@ void thrustsort(int* d_array, size_t arraySize, int* buffer, size_t bufferSize, 
     auto alloc_policy = thrust::cuda::par(allocator).on(stream);
 
     // Perform the sort operation using the specified stream and auxiliary buffer for temporary storage
-    thrust::sort(alloc_policy, array_ptr, array_ptr + arraySize);
+    thrust::sort(alloc_policy, array_ptr, array_ptr + arraySize, MyCompare());
 }

@@ -1,8 +1,7 @@
 ### TODOs: Benchmarking
 
-thrust comparison
 cudamalloc in profile
-test different bitonic CUDA sort
+- test different bitonic CUDA sort
 
 KERNEL SHELL VS THRUST:
 + performance comparison of kernel only + profile
