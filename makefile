@@ -23,10 +23,7 @@ rebuild:
 	@make -s build
 
 # Run the application
-run: rebuild
-	@./$(TARGET)
-
-rerun:
+run:
 	@./$(TARGET)
 
 # Clean up generated files

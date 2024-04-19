@@ -18,7 +18,9 @@ struct GPUInfo {
 
 std::vector<GPUInfo> getGPUsInfo(size_t deviceMemory, size_t bufferCount);
 std::vector<std::vector<std::vector<int>>> splitArray(int* unsortedArray, size_t arraySize, size_t chunkSize, std::vector<GPUInfo>& gpus);
+
 std::vector<int> multiWayMerge(const std::vector<std::vector<std::vector<int>>>& chunkGroups);
+std::vector<int> sortKernel(const std::string& method, int* h_inputArray, size_t arraySize, std::vector<GPUInfo>& gpus);
 
 void sortShell(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::vector<GPUInfo>& gpus);
 void sortShell2N(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::vector<GPUInfo>& gpus);
