@@ -1,7 +1,13 @@
 #!/bin/bash
 
-# Open output redirection
-exec > console_output.txt 2>&1
+# Define arrays of parameters
+methods=("thrustsort2N" "thrustsort3N" "thrustsortInplace" "shellsort" "shellsort2N")
+memcpy_methods=("thrustsortInplaceMemcpy")
+kernel_methods=("shellsortKernel" "thrustsortKernel")
+distributions=("uniform" "normal" "sorted" "reverse_sorted" "nearly_sorted")
+arraySizes=(10000000)
+kernel_arraySizes=(10000000)
+deviceMemories=(50)
 
 # Function to run a benchmark with given parameters
 run_benchmark() {
@@ -9,20 +15,13 @@ run_benchmark() {
     local distribution=$2
     local arraySize=$3
     local deviceMemory=$4
-    local outputFile="./build/profile_${method}_${distribution}_${arraySize}_${deviceMemory}.nsys-rep"
-
-    echo "Profiling method: $method, Distribution: $distribution, Array Size: $arraySize, Device Memory: $deviceMemory"
-    nsys profile --stats=true --output=$outputFile ./build/main $method $distribution $arraySize $deviceMemory
+    local iterations=1
+    local warmup=0
+    local seed=42
+    local outputFile="./profiles/profile_${method}_${distribution}_${arraySize}_${deviceMemory}.nsys-rep"
+    
+    nsys profile --stats=true --output=$outputFile ./benchmark $method $distribution $arraySize $deviceMemory $iterations $warmup $seed
 }
-
-# Define arrays of parameters
-methods=("thrustsort2N" "thrustsort3N" "thrustsortInplace" "shellsort" "shellsort2N")
-memcpy_methods=("thrustsortInplaceMemcpy")
-kernel_methods=("shellsortKernel" "thrustsortKernel")
-distributions=("uniform" "normal" "sorted" "reverse_sorted" "nearly_sorted")
-arraySizes=(1000000)
-kernel_arraySizes=(1000000)
-deviceMemories=(100 200)
 
 # Standard benchmarks loop
 for method in "${methods[@]}"; do

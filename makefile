@@ -1,19 +1,19 @@
 # Source files
 SRC_DIR := src
-BUILD_DIR := build
-TARGET := $(BUILD_DIR)/main
-NSYS_REPORT := $(BUILD_DIR)/profile.nsys-rep
+TARGET := benchmark
+OUTPUTS_DIR := outputs
+PROFILES_DIR := profiles
+NSYS_REPORT := $(PROFILES_DIR)/profile.nsys-rep
 SRCS := $(wildcard $(SRC_DIR)/*.cpp $(SRC_DIR)/*.cu)
 OMP_FLAGS := -Xcompiler -fopenmp --expt-relaxed-constexpr
 
 # Phony targets
-.PHONY: build rebuild run rerun clean profile-nsys view-report
+.PHONY: build run clean profile-nsys view-report
 
 # Build target
 build: $(TARGET)
 $(TARGET): $(SRCS)
 	@echo "Building $(TARGET)"
-	@mkdir -p $(BUILD_DIR)
 	@nvcc -g -G $(OMP_FLAGS) $(SRCS) -o $@ -lgomp
 
 # Rebuild the application
@@ -28,8 +28,9 @@ run:
 
 # Clean up generated files
 clean:
-	@echo "Cleaning up..."
-	@rm -rf $(BUILD_DIR)
+	@echo "Cleaning up profiles..."
+	@rm -rf $(OUTPUTS_DIR)/*
+	@rm -rf $(PROFILES_DIR)/*
 
 # Profile with Nsight Systems
 profile-nsys: $(TARGET)
