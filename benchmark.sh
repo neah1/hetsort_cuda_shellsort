@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Redirect output to both file and console.
-exec > >(tee console_output.txt) 2>&1
+# Open output redirection
+exec > >(tee ./profiles/console_output.txt) 2>&1
 
 # Function to run a benchmark with given parameters
 run_benchmark() {
@@ -17,7 +17,7 @@ run_benchmark() {
 arraySizes=(50000000)
 kernel_arraySizes=(50000000)
 deviceMemories=(50)
-iterations=2
+iterations=3
 warmup=1
 seed=42
 

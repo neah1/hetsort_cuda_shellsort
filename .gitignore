@@ -1,6 +1,5 @@
 # Project specific files
-outputs/
-profiles/
+profiles*/
 benchmark
 
 # Byte-compiled / optimized / DLL files
