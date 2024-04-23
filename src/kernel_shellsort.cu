@@ -1,5 +1,4 @@
 #include "kernel.cuh"
-#include "bitonic_sort.cuh"
 
 __global__ void shellsortKernel(int* d_array, size_t arraySize, size_t increment) {
     size_t index = threadIdx.x + blockIdx.x * blockDim.x;
@@ -15,38 +14,80 @@ __global__ void shellsortKernel(int* d_array, size_t arraySize, size_t increment
     }
 }
 
-__device__ void bitonicCompare(int* values, int i, int j, bool dir) {
-    int temp;
-    if ((values[i] > values[j]) == dir) {
-        temp = values[i];
-        values[i] = values[j];
-        values[j] = temp;
-    }
+__device__ void _bitonicStep1(int * smem, int tid, int tpp, int d) {
+	int m = tid / (d >> 1);
+	int tib = tid - m*(d >> 1);
+	int addr1 = d*m + tib;
+	int addr2 = (m + 1)*d - tib - 1;
+	
+	int A = smem[addr1];
+	int B = smem[addr2];
+	smem[addr1] = min(A, B);
+	smem[addr2] = max(A, B);
 }
 
-__global__ void bitonicKernel(int* d_array, size_t arraySize) {
-    extern __shared__ int shared[];
-    size_t tid = threadIdx.x;
-    size_t idx = blockIdx.x * blockDim.x * 2 + tid;
+__device__ void _bitonicStep2(int * smem, int tid, int tpp, int d) {
+	int m = tid / (d >> 1);
+	int tib = tid - m*(d >> 1);
+	int addr1 = d*m + tib;
+	int addr2 = addr1 + (d >> 1);
 
-    // Load elements into shared memory. Pad with maximum value if this is the last segment and it's not full
-    shared[2 * tid] = (idx < arraySize) ? d_array[idx] : INT_MAX;
-    shared[2 * tid + 1] = (idx + 1 < arraySize) ? d_array[idx + 1] : INT_MAX;
-    __syncthreads();
+	int A = smem[addr1];
+	int B = smem[addr2];
+	smem[addr1] = min(A, B);
+	smem[addr2] = max(A, B);
+}
 
-    // Bitonic sort in shared memory
-    for (int size = 2; size <= blockDim.x; size *= 2) {
-        bool dir = ((tid / size) % 2 == 0);
-        for (int stride = size / 2; stride > 0; stride /= 2) {
-            int pos = (tid / size) * size + (tid % size);
-            bitonicCompare(shared, pos, pos + stride, dir);
-            __syncthreads();
-        }
-    }
+__global__ void bitonicKernel(int* mem) {
+	int bid = blockIdx.x; // Block UID
+	int tpp = threadIdx.x; // Thread position in block
+	__shared__ int smem[256]; // Two blocks worth of shared memory
+	smem[tpp] = mem[blockDim.x*(2 * bid) + tpp]; // Coalesced memory load
+	smem[tpp + blockDim.x] = mem[blockDim.x*((2 * bid) + 1) + tpp]; // Coalesced memory load
+	int blocks = 8;
+	for (int blockNum = 1; blockNum <= blocks; blockNum++) {
+		int d = 1 << blockNum;
+		_bitonicStep1(smem, tpp, tpp, d);
+		__syncthreads();
+		d = d >> 1;
+		while(d >= 2) {
+			_bitonicStep2(smem, tpp, tpp, d);
+			__syncthreads();
+			d = d >> 1;
+		}
+	}
 
-    // Write sorted elements back to global memory
-    if (idx < arraySize) d_array[idx] = shared[2 * tid];
-    if (idx + 1 < arraySize) d_array[idx + 1] = shared[2 * tid + 1];
+	mem[blockDim.x*(2 * bid) + tpp] = smem[tpp];
+	mem[blockDim.x*((2*bid)+1) + tpp] = smem[tpp + blockDim.x];
+}
+
+__global__ void bitonicKernelXBlock1(int* mem, int blockNum) {
+	int tpp = threadIdx.x; // Thread position in block
+	int tid = blockIdx.x*blockDim.x + threadIdx.x; // Thread global UID
+	int d = 1 << blockNum;
+	_bitonicStep1(mem, tid, tpp, d);
+}
+
+__global__ void bitonicKernelXBlock2(int* mem, int blockNum, int d) {
+	int tpp = threadIdx.x; // Thread position in block
+	int tid = blockIdx.x*blockDim.x + threadIdx.x; // Thread global UID
+	_bitonicStep2(mem, tid, tpp, d);
+}
+
+void bitonicSort(int* d_array, size_t arraySize, cudaStream_t stream) {
+	// Launch a kernel on the GPU with one thread for each element.
+	int numBlocks = log2(arraySize);
+
+	bitonicKernel << <arraySize / 256, 128, 0, stream >> >(d_array);
+	for (int b = 9; b <= numBlocks; b++) {
+		int d = 1 << b;
+		bitonicKernelXBlock1 << <arraySize / 512, 256, 0, stream >> >(d_array, b);
+		d = d >> 1;
+		while (d >= 2) {
+			bitonicKernelXBlock2 << <arraySize / 512, 256, 0, stream >> >(d_array, b, d);
+			d = d >> 1;
+		}
+	}
 }
 
 std::vector<size_t> generateIncrements(size_t arraySize) {
@@ -67,7 +108,6 @@ std::vector<size_t> generateIncrements(size_t arraySize) {
 
     // Reverse the sequence to start from the largest increment
     std::reverse(increments.begin(), increments.end());
-
     return increments;
 }
 
@@ -83,13 +123,13 @@ void shellsort(int* d_array, size_t arraySize, cudaStream_t stream) {
             numThreads = min(MAX_THREADS_PER_BLOCK, increment);
             numBlocks = (increment + numThreads - 1) / numThreads;
             shellsortKernel<<<numBlocks, numThreads, 0, stream>>>(d_array, arraySize, increment);
-        } else {
-            // blockSize = BITONIC_SORT_THRESHOLD;
-            // numBlocks = (arraySize + blockSize - 1) / blockSize;
-            // size_t sharedMemSize = blockSize * sizeof(int);
-            // bitonicSortKernel<<<MAX_THREADS_PER_BLOCK, numBlocks, sharedMemSize, stream>>>(d_array, arraySize);
-            bitonic::sort(d_array, arraySize, stream);
-            break;
         }
     }
+
+    // blockSize = BITONIC_SORT_THRESHOLD;
+    // numBlocks = (arraySize + blockSize - 1) / blockSize;
+    // size_t sharedMemSize = blockSize * sizeof(int);
+    // bitonicKernel<<<MAX_THREADS_PER_BLOCK, numBlocks, sharedMemSize, stream>>>(d_array, arraySize);
+    
+    bitonicSort(d_array, arraySize, stream);
 }

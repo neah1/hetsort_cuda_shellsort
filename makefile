@@ -21,8 +21,9 @@ rebuild:
 	@rm -f $(TARGET)
 	@make -s build
 
-# Run the application
-run:
+# Build and run the application
+run: build
+	@echo "Running $(TARGET)"
 	@./$(TARGET)
 
 # Clean up generated files

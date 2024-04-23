@@ -54,8 +54,32 @@ std::vector<GPUInfo> getGPUsInfo(size_t deviceMemory, size_t bufferCount) {
     return gpus;
 }
 
-std::vector<std::vector<std::vector<int>>> splitArray(int* unsortedArray, size_t arraySize, size_t chunkSize, std::vector<GPUInfo>& gpus) {
+template<typename T>
+T largestPowerOfTwo(T x) {
+    if (x == 0) return 0;
+    int bits = sizeof(T) * CHAR_BIT;
+    for (int shift = 1; shift < bits; shift *= 2) x |= (x >> shift);
+    return x - (x >> 1);
+}
+
+size_t nextPowerOfTwo(size_t n) {
+    if (n == 0) return 1;
+    if ((n & (n - 1)) == 0) return n;
+    return static_cast<size_t>(pow(2, ceil(log2(n))));
+}
+
+void padVectorToPowerOfTwo(std::vector<int>& array) {
+    size_t currentSize = array.size();
+    size_t newSize = nextPowerOfTwo(currentSize);
+    if (newSize > currentSize) {
+        array.resize(newSize, INT_MAX);
+        printf("Padded array from %lu to %lu\n", currentSize, newSize);
+    }
+}
+
+std::vector<std::vector<std::vector<int>>> splitArray(int* unsortedArray, size_t arraySize, size_t chunkSize, std::vector<GPUInfo>& gpus, bool bitonicChunks) {
     std::vector<std::vector<int>> chunks;
+    if (bitonicChunks) chunkSize = largestPowerOfTwo(chunkSize);
     size_t numChunks = arraySize / chunkSize + (arraySize % chunkSize != 0);
     std::cout << "Number of chunks: " << numChunks << "\n";
     
@@ -77,7 +101,7 @@ std::vector<std::vector<std::vector<int>>> splitArray(int* unsortedArray, size_t
     return chunkGroups;
 }
 
-std::vector<int> multiWayMerge(const std::vector<std::vector<std::vector<int>>>& chunkGroups) {
+std::vector<int> multiWayMerge(const std::vector<std::vector<std::vector<int>>>& chunkGroups, size_t arraySize) {
     // Prepare a vector of sequences for the multi-way merge from chunk groups
     std::vector<std::pair<int*, int*>> sequences;
     for (const auto& group : chunkGroups) {
@@ -93,5 +117,6 @@ std::vector<int> multiWayMerge(const std::vector<std::vector<std::vector<int>>>&
 
     // Perform the multiway merge
     __gnu_parallel::multiway_merge(sequences.begin(), sequences.end(), merged_result.begin(), total_size, std::less<int>());
+    merged_result.resize(arraySize);
     return merged_result;
 }

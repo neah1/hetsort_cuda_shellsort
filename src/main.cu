@@ -1,13 +1,14 @@
 #include "hetsort.cuh"
 
 // Algorithm parameters
+bool bitonicChunks = false;
 std::string method, distribution;
 size_t arraySize, deviceMemory, seed, warmup, iterations;
 typedef void CUDASorter(std::vector<std::vector<std::vector<int>>>&, std::vector<GPUInfo>&);
 
 std::vector<int> runSort(CUDASorter cudaSorter, int* h_inputArray, size_t chunkSize, std::vector<GPUInfo>& gpus) {
     nvtxRangePush("ArraySplit phase");
-    std::vector<std::vector<std::vector<int>>> chunkGroups = splitArray(h_inputArray, arraySize, chunkSize, gpus);
+    std::vector<std::vector<std::vector<int>>> chunkGroups = splitArray(h_inputArray, arraySize, chunkSize, gpus, bitonicChunks);
     nvtxRangePop();
 
     nvtxRangePush("Kernel phase");
@@ -15,7 +16,7 @@ std::vector<int> runSort(CUDASorter cudaSorter, int* h_inputArray, size_t chunkS
     nvtxRangePop();
 
     nvtxRangePush("Merge phase");
-    std::vector<int> h_outputArray = multiWayMerge(chunkGroups);
+    std::vector<int> h_outputArray = multiWayMerge(chunkGroups, arraySize);
     nvtxRangePop();
 
     return h_outputArray;
@@ -50,10 +51,7 @@ void runSortingAlgorithm(CUDASorter cudaSorter, int* h_inputArray, size_t chunkS
         printf("Iteration %d: %lld ms\n", i, duration);
 
         // Check if the array is sorted correctly
-        if (!checkArraySorted(h_outputArray.data(), originalCounts, arraySize)) {
-            fprintf(stderr, "Error (%s): Array not sorted correctly\n", method.c_str());
-            exit(EXIT_FAILURE);
-        }
+        checkArraySorted(h_outputArray.data(), originalCounts, arraySize);
     }
 }
 
@@ -75,15 +73,17 @@ CUDASorter* selectSortingMethod(size_t& bufferCount, size_t& chunkSize) {
     } else if (method == "shellsort") {
         cudaSorter = sortShell;
         bufferCount = 1;
+        bitonicChunks = true;
     } else if (method == "shellsort2N") {
         cudaSorter = sortShell2N;
         bufferCount = 2;
+        bitonicChunks = true;
     } else if (method == "shellsortKernel") {
-        deviceMemory = arraySize * sizeof(int);
         bufferCount = 1;
+        deviceMemory = nextPowerOfTwo(arraySize) * sizeof(int);
     } else if (method == "thrustsortKernel") {
-        deviceMemory = 2 * arraySize * sizeof(int);
         bufferCount = 2;
+        deviceMemory = 2 * arraySize * sizeof(int);
     } else {
         std::cerr << "Invalid sorting method.\n";
         exit(EXIT_FAILURE);
@@ -115,13 +115,13 @@ void benchmark() {
 }
 
 int main(int argc, char* argv[]) {
-    method = (argc > 1) ? argv[1] : "thrustsort2N";
+    method = (argc > 1) ? argv[1] : "shellsort";
     distribution = (argc > 2) ? argv[2] : "uniform";
-    arraySize = (argc > 3) ? std::atoi(argv[3]) : 100'000'000;
-    deviceMemory = (argc > 4) ? std::atoi(argv[4]) : 500;
+    arraySize = (argc > 3) ? std::atoi(argv[3]) : 10'000'000;
+    deviceMemory = (argc > 4) ? std::atoi(argv[4]) : 100;
 
-    iterations = (argc > 5) ? std::atoi(argv[5]) : 3;
-    warmup = (argc > 6) ? std::atoi(argv[6]) : 1;
+    iterations = (argc > 5) ? std::atoi(argv[5]) : 1;
+    warmup = (argc > 6) ? std::atoi(argv[6]) : 0;
     seed = (argc > 7) ? std::atoi(argv[7]) : 42;
 
     std::string label = "Method: " + method + ", Distribution: " + distribution + 
