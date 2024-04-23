@@ -1,10 +1,9 @@
 # Source files
+TARGET := main
 SRC_DIR := src
-TARGET := benchmark
 PROFILES_DIR := profiles
 NSYS_REPORT := $(PROFILES_DIR)/profile.nsys-rep
 SRCS := $(wildcard $(SRC_DIR)/*.cpp $(SRC_DIR)/*.cu)
-OMP_FLAGS := -Xcompiler -fopenmp
 
 # Phony targets
 .PHONY: build run clean profile-nsys view-report
@@ -13,7 +12,7 @@ OMP_FLAGS := -Xcompiler -fopenmp
 build: $(TARGET)
 $(TARGET): $(SRCS)
 	@echo "Building $(TARGET)"
-	@nvcc -g -G $(OMP_FLAGS) $(SRCS) -o $@ -lgomp
+	@nvcc -g -G -Xcompiler -fopenmp $(SRCS) -o $@ -lgomp
 
 # Rebuild the application
 rebuild: 
@@ -37,6 +36,6 @@ profile-nsys: $(TARGET)
 	@nsys profile --stats=true --output=$(NSYS_REPORT) ./$(TARGET)
 
 # View the profiling report summary
-view-report:
+view-report: $(NSYS_REPORT)
 	@echo "Viewing Nsight Systems Report Summary"
 	@nsys stats --report $(NSYS_REPORT)

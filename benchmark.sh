@@ -1,17 +1,8 @@
 #!/bin/bash
 
 # Open output redirection
+mkdir -p ./profiles
 exec > >(tee ./profiles/console_output.txt) 2>&1
-
-# Function to run a benchmark with given parameters
-run_benchmark() {
-    local method=$1
-    local distribution=$2
-    local arraySize=$3
-    local deviceMemory=$4
-    local outputFile="./profiles/profile_${method}_${distribution}_${arraySize}_${deviceMemory}.nsys-rep"
-    nsys profile --stats=true --output=$outputFile ./benchmark $method $distribution $arraySize $deviceMemory $iterations $warmup $checkSorted $seed | grep -v "^\[\d+\/\d+\]\s\[=*\d+%.*"
-}
 
 # Define arrays of parameters
 methods=("thrustsort2N" "thrustsort3N" "thrustsortInplace" "shellsort" "shellsort2N")
@@ -26,9 +17,18 @@ kernel_arraySizes=(100000000)
 distributions=("uniform") 
 
 iterations=2
-warmup=0
-checkSorted=1
+checkSorted=0
 seed=42
+
+# Function to run a benchmark with given parameters
+run_benchmark() {
+    local method=$1
+    local distribution=$2
+    local arraySize=$3
+    local deviceMemory=$4
+    local outputFile="./profiles/profile_${method}_${distribution}_${arraySize}_${deviceMemory}.nsys-rep"
+    nsys profile --stats=true --output=$outputFile ./main $method $distribution $arraySize $deviceMemory $iterations $checkSorted $seed
+}
 
 # Standard benchmarks loop
 for method in "${methods[@]}"; do
@@ -45,7 +45,7 @@ done
 for method in "${memcpy_methods[@]}"; do
     for arraySize in "${arraySizes[@]}"; do
         for deviceMemory in "${deviceMemories[@]}"; do
-            run_benchmark $method "uniform" $arraySize $deviceMemory
+            run_benchmark $method uniform $arraySize $deviceMemory
         done
     done
 done
