@@ -10,7 +10,7 @@ run_benchmark() {
     local arraySize=$3
     local deviceMemory=$4
     local outputFile="./profiles/profile_${method}_${distribution}_${arraySize}_${deviceMemory}.nsys-rep"
-    nsys profile --stats=true --output=$outputFile ./benchmark $method $distribution $arraySize $deviceMemory $iterations $warmup $checkSorted $seed
+    nsys profile --stats=true --output=$outputFile ./benchmark $method $distribution $arraySize $deviceMemory $iterations $warmup $checkSorted $seed | grep -v "^\[\d+\/\d+\]\s\[=*\d+%.*"
 }
 
 # Define arrays of parameters

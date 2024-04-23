@@ -68,7 +68,7 @@ CUDASorter* selectSortingMethod(size_t& bufferCount, size_t& chunkSize) {
     } else if (method == "thrustsortInplace") {
         cudaSorter = sortThrustInplace;
         bufferCount = 2;
-    } else if (method == "sortThrustInplaceMemcpy") {
+    } else if (method == "thrustsortInplaceMemcpy") {
         cudaSorter = sortThrustInplaceMemcpy;
         bufferCount = 2;
     } else if (method == "shellsort") {
@@ -84,12 +84,13 @@ CUDASorter* selectSortingMethod(size_t& bufferCount, size_t& chunkSize) {
         deviceMemory = nextPowerOfTwo(arraySize) * sizeof(int);
     } else if (method == "thrustsortKernel") {
         bufferCount = 2;
-        deviceMemory = 2 * arraySize * sizeof(int);
+        deviceMemory = 2.5 * arraySize * sizeof(int);
     } else {
         std::cerr << "Invalid sorting method.\n";
         exit(EXIT_FAILURE);
     }
     chunkSize = (deviceMemory / bufferCount) / sizeof(int);
+    if (method.find("thrustsort") != std::string::npos) chunkSize *= 0.8;
     return cudaSorter;
 }
 
@@ -116,9 +117,9 @@ void benchmark() {
 }
 
 int main(int argc, char* argv[]) {
-    method = (argc > 1) ? argv[1] : "shellsort";
+    method = (argc > 1) ? argv[1] : "thrustsort2N";
     distribution = (argc > 2) ? argv[2] : "uniform";
-    arraySize = (argc > 3) ? std::atoi(argv[3]) : 10'000'000;
+    arraySize = (argc > 3) ? std::atoi(argv[3]) : 100'000'000;
     deviceMemory = (argc > 4) ? std::atoi(argv[4]) : 100;
     
     iterations = (argc > 5) ? std::atoi(argv[5]) : 1;
@@ -130,7 +131,8 @@ int main(int argc, char* argv[]) {
                         ", Array Size: " + std::to_string(arraySize) + 
                         ", Array Byte Size: " + std::to_string(arraySize * sizeof(int) / (1024 * 1024)) + " MB" +
                         ", Device Memory: " + std::to_string(deviceMemory) + " MB" +
-                        ", Iterations: " + std::to_string(iterations) + ", Warmup: " + std::to_string(warmup) + "\n";
+                        ", Iterations: " + std::to_string(iterations) + ", Warmup: " + std::to_string(warmup) +
+                        ", Check Sorted: " + std::to_string(checkSorted) + "\n";
     printf(label.c_str());
 
     benchmark();
