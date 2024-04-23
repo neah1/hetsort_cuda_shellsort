@@ -14,80 +14,39 @@ __global__ void shellsortKernel(int* d_array, size_t arraySize, size_t increment
     }
 }
 
-__device__ void _bitonicStep1(int * smem, int tid, int tpp, int d) {
-	int m = tid / (d >> 1);
-	int tib = tid - m*(d >> 1);
-	int addr1 = d*m + tib;
-	int addr2 = (m + 1)*d - tib - 1;
-	
-	int A = smem[addr1];
-	int B = smem[addr2];
-	smem[addr1] = min(A, B);
-	smem[addr2] = max(A, B);
+__device__ void swap(int &a, int &b) {
+    int temp = a;
+    a = b;
+    b = temp;
 }
 
-__device__ void _bitonicStep2(int * smem, int tid, int tpp, int d) {
-	int m = tid / (d >> 1);
-	int tib = tid - m*(d >> 1);
-	int addr1 = d*m + tib;
-	int addr2 = addr1 + (d >> 1);
+__global__ void bitonicKernel(int *d_array, size_t arraySize, int k, int j) {
+    unsigned int tid = threadIdx.x + blockDim.x * blockIdx.x;
+    unsigned int ixj = tid ^ j;
 
-	int A = smem[addr1];
-	int B = smem[addr2];
-	smem[addr1] = min(A, B);
-	smem[addr2] = max(A, B);
-}
-
-__global__ void bitonicKernel(int* mem) {
-	int bid = blockIdx.x; // Block UID
-	int tpp = threadIdx.x; // Thread position in block
-	__shared__ int smem[256]; // Two blocks worth of shared memory
-	smem[tpp] = mem[blockDim.x*(2 * bid) + tpp]; // Coalesced memory load
-	smem[tpp + blockDim.x] = mem[blockDim.x*((2 * bid) + 1) + tpp]; // Coalesced memory load
-	int blocks = 8;
-	for (int blockNum = 1; blockNum <= blocks; blockNum++) {
-		int d = 1 << blockNum;
-		_bitonicStep1(smem, tpp, tpp, d);
-		__syncthreads();
-		d = d >> 1;
-		while(d >= 2) {
-			_bitonicStep2(smem, tpp, tpp, d);
-			__syncthreads();
-			d = d >> 1;
-		}
-	}
-
-	mem[blockDim.x*(2 * bid) + tpp] = smem[tpp];
-	mem[blockDim.x*((2*bid)+1) + tpp] = smem[tpp + blockDim.x];
-}
-
-__global__ void bitonicKernelXBlock1(int* mem, int blockNum) {
-	int tpp = threadIdx.x; // Thread position in block
-	int tid = blockIdx.x*blockDim.x + threadIdx.x; // Thread global UID
-	int d = 1 << blockNum;
-	_bitonicStep1(mem, tid, tpp, d);
-}
-
-__global__ void bitonicKernelXBlock2(int* mem, int blockNum, int d) {
-	int tpp = threadIdx.x; // Thread position in block
-	int tid = blockIdx.x*blockDim.x + threadIdx.x; // Thread global UID
-	_bitonicStep2(mem, tid, tpp, d);
+    if (ixj > tid) {
+        if ((tid & k) == 0) {
+            if (d_array[tid] > d_array[ixj]) {
+				swap(d_array[tid], d_array[ixj]);
+            }
+        }
+        else {
+            if (d_array[tid] < d_array[ixj]) {
+				swap(d_array[tid], d_array[ixj]);
+            }
+        }
+    }
 }
 
 void bitonicSort(int* d_array, size_t arraySize, cudaStream_t stream) {
-	// Launch a kernel on the GPU with one thread for each element.
-	int numBlocks = log2(arraySize);
-
-	bitonicKernel << <arraySize / 256, 128, 0, stream >> >(d_array);
-	for (int b = 9; b <= numBlocks; b++) {
-		int d = 1 << b;
-		bitonicKernelXBlock1 << <arraySize / 512, 256, 0, stream >> >(d_array, b);
-		d = d >> 1;
-		while (d >= 2) {
-			bitonicKernelXBlock2 << <arraySize / 512, 256, 0, stream >> >(d_array, b, d);
-			d = d >> 1;
-		}
-	}
+    int threadsPerBlock = 256;
+    int numBlocks = (arraySize + threadsPerBlock - 1) / threadsPerBlock;
+    for (int k = 2; k <= arraySize; k <<= 1) {
+        for (int j = k >> 1; j > 0; j >>= 1) {
+            bitonicKernel<<<numBlocks, threadsPerBlock, 0, stream>>>(d_array, arraySize, k, j);
+            cudaStreamSynchronize(stream);
+        }
+    }
 }
 
 std::vector<size_t> generateIncrements(size_t arraySize) {
@@ -126,10 +85,5 @@ void shellsort(int* d_array, size_t arraySize, cudaStream_t stream) {
         }
     }
 
-    // blockSize = BITONIC_SORT_THRESHOLD;
-    // numBlocks = (arraySize + blockSize - 1) / blockSize;
-    // size_t sharedMemSize = blockSize * sizeof(int);
-    // bitonicKernel<<<MAX_THREADS_PER_BLOCK, numBlocks, sharedMemSize, stream>>>(d_array, arraySize);
-    
     bitonicSort(d_array, arraySize, stream);
 }

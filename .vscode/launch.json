@@ -9,7 +9,7 @@
             "type": "cuda-gdb",
             "request": "launch",
             "program": "${workspaceFolder}/benchmark",
-            "args": "shellsort uniform 100000 10",
+            "args": "shellsortKernel uniform 10000 10",
         },
         {
             "name": "CUDA C++: Attach",
