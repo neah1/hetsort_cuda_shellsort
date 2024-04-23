@@ -1,9 +1,10 @@
 #include "hetsort.cuh"
 
 // Algorithm parameters
+bool checkSorted = true;
 bool bitonicChunks = false;
 std::string method, distribution;
-size_t arraySize, deviceMemory, seed, warmup, iterations;
+size_t arraySize, deviceMemory, iterations, warmup, seed;
 typedef void CUDASorter(std::vector<std::vector<std::vector<int>>>&, std::vector<GPUInfo>&);
 
 std::vector<int> runSort(CUDASorter cudaSorter, int* h_inputArray, size_t chunkSize, std::vector<GPUInfo>& gpus) {
@@ -23,9 +24,6 @@ std::vector<int> runSort(CUDASorter cudaSorter, int* h_inputArray, size_t chunkS
 }
 
 void runSortingAlgorithm(CUDASorter cudaSorter, int* h_inputArray, size_t chunkSize, std::vector<GPUInfo>& gpus) {
-    // Count the number of elements in the input array
-    std::unordered_map<int, int> originalCounts = countElements(h_inputArray, arraySize);
-
     // Warmup the GPU
     for (int i = 0; i < warmup; i++) 
         if (method.find("Kernel") != std::string::npos)
@@ -51,7 +49,10 @@ void runSortingAlgorithm(CUDASorter cudaSorter, int* h_inputArray, size_t chunkS
         printf("Iteration %d: %lld ms\n", i, duration);
 
         // Check if the array is sorted correctly
-        checkArraySorted(h_outputArray.data(), originalCounts, arraySize);
+        if (checkSorted) {
+            std::unordered_map<int, int> originalCounts = countElements(h_inputArray, arraySize);
+            checkArraySorted(h_outputArray.data(), originalCounts, arraySize);
+        }
     }
 }
 
@@ -119,10 +120,11 @@ int main(int argc, char* argv[]) {
     distribution = (argc > 2) ? argv[2] : "uniform";
     arraySize = (argc > 3) ? std::atoi(argv[3]) : 10'000'000;
     deviceMemory = (argc > 4) ? std::atoi(argv[4]) : 100;
-
+    
     iterations = (argc > 5) ? std::atoi(argv[5]) : 1;
     warmup = (argc > 6) ? std::atoi(argv[6]) : 0;
-    seed = (argc > 7) ? std::atoi(argv[7]) : 42;
+    checkSorted = (argc > 7) ? std::atoi(argv[7]) : 1;
+    seed = (argc > 8) ? std::atoi(argv[8]) : 42;
 
     std::string label = "Method: " + method + ", Distribution: " + distribution + 
                         ", Array Size: " + std::to_string(arraySize) + 

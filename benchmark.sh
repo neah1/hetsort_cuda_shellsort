@@ -10,22 +10,25 @@ run_benchmark() {
     local arraySize=$3
     local deviceMemory=$4
     local outputFile="./profiles/profile_${method}_${distribution}_${arraySize}_${deviceMemory}.nsys-rep"
-    nsys profile --stats=true --output=$outputFile ./benchmark $method $distribution $arraySize $deviceMemory $iterations $warmup $seed
+    nsys profile --stats=true --output=$outputFile ./benchmark $method $distribution $arraySize $deviceMemory $iterations $warmup $checkSorted $seed
 }
-
-# Define parameters
-arraySizes=(50000000)
-kernel_arraySizes=(50000000)
-deviceMemories=(50)
-iterations=3
-warmup=1
-seed=42
 
 # Define arrays of parameters
 methods=("thrustsort2N" "thrustsort3N" "thrustsortInplace" "shellsort" "shellsort2N")
-kernel_methods=("shellsortKernel" "thrustsortKernel")
 memcpy_methods=("thrustsortInplaceMemcpy")
-distributions=("uniform" "normal" "sorted" "reverse_sorted" "nearly_sorted")
+arraySizes=(100000000)
+deviceMemories=(100)
+
+kernel_methods=("shellsortKernel" "thrustsortKernel")
+kernel_arraySizes=(100000000)
+
+# Distributions: "uniform" "normal" "sorted" "reverse_sorted" "nearly_sorted"
+distributions=("uniform") 
+
+iterations=2
+warmup=0
+checkSorted=1
+seed=42
 
 # Standard benchmarks loop
 for method in "${methods[@]}"; do
