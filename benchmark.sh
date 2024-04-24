@@ -1,22 +1,17 @@
 #!/bin/bash
 
-# Open output redirection
-mkdir -p ./profiles
-exec > >(tee ./profiles/console_output.txt) 2>&1
-
 # Define arrays of parameters
 methods=("thrustsort2N" "thrustsort3N" "thrustsortInplace" "shellsort" "shellsort2N")
-memcpy_methods=("thrustsortInplaceMemcpy")
-arraySizes=(100000000)
-deviceMemories=(100)
+arraySizes=(500000000 1000000000 2000000000 3000000000 4000000000 5000000000)
+deviceMemories=(1000 2000 4000)
 
 kernel_methods=("shellsortKernel" "thrustsortKernel")
-kernel_arraySizes=(100000000)
+kernel_arraySizes=(300000000 400000000 500000000 1000000000)
 
-# Distributions: "uniform" "normal" "sorted" "reverse_sorted" "nearly_sorted"
-distributions=("uniform") 
+distributions=("uniform" "normal" "sorted" "reverse_sorted" "nearly_sorted") 
 
-iterations=2
+iterations=10
+warmup=1
 checkSorted=0
 seed=42
 
@@ -27,8 +22,11 @@ run_benchmark() {
     local arraySize=$3
     local deviceMemory=$4
     local outputFile="./profiles/profile_${method}_${distribution}_${arraySize}_${deviceMemory}.nsys-rep"
-    nsys profile --stats=true --output=$outputFile ./main $method $distribution $arraySize $deviceMemory $iterations $checkSorted $seed
+    nsys profile --stats=true --output=$outputFile ./main $method $distribution $arraySize $deviceMemory $iterations $warmup $checkSorted $seed 2>&1 | tee -a ./profiles/console_output.txt
+
 }
+
+mkdir -p ./profiles
 
 # Standard benchmarks loop
 for method in "${methods[@]}"; do
@@ -42,11 +40,9 @@ for method in "${methods[@]}"; do
 done
 
 # Benchmark memcpy methods
-for method in "${memcpy_methods[@]}"; do
-    for arraySize in "${arraySizes[@]}"; do
-        for deviceMemory in "${deviceMemories[@]}"; do
-            run_benchmark $method uniform $arraySize $deviceMemory
-        done
+for arraySize in "${arraySizes[@]}"; do
+    for deviceMemory in "${deviceMemories[@]}"; do
+        run_benchmark thrustsortInplaceMemcpy uniform $arraySize $deviceMemory
     done
 done
 
