@@ -22,8 +22,11 @@ run_benchmark() {
     local arraySize=$3
     local deviceMemory=$4
     local outputFile="./profiles/profile_${method}_${distribution}_${arraySize}_${deviceMemory}.nsys-rep"
-    nsys profile --stats=true --output=$outputFile ./main $method $distribution $arraySize $deviceMemory $iterations $warmup $checkSorted $seed 2>&1 | tee -a ./profiles/console_output.txt
-
+    if [ -f "$outputFile" ]; then
+        echo "Skipping profiling for $outputFile as it already exists."
+    else
+        nsys profile --stats=true --output=$outputFile ./main $method $distribution $arraySize $deviceMemory $iterations $warmup $checkSorted $seed 2>&1 | tee -a ./profiles/console_output.txt
+    fi
 }
 
 mkdir -p ./profiles
