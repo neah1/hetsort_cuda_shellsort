@@ -1,6 +1,6 @@
 #!/bin/bash
 
-directory="./profiles_lower"
+directory="./profiles"
 output_file="$directory/nsys_output.txt"
 
 # Initialize the output file with headers (assuming the headers from the first file are okay to use)

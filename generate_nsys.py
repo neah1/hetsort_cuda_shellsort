@@ -2,8 +2,8 @@ import re
 import csv
 
 # Open the text file
-folder='./profiles_lower'
-with open(f'{folder}/nsys_output.txt', 'r') as file:
+directory='./profiles'
+with open(f'{directory}/nsys_output.txt', 'r') as file:
     data = file.read()
 
 # Function to parse each block of data
@@ -44,7 +44,7 @@ for block in blocks:
     all_results.extend(parse_data_block(block))
 
 # Write to CSV
-with open(f'{folder}/nsys_output.csv', 'w', newline='') as csvfile:
+with open(f'{directory}/nsys_output.csv', 'w', newline='') as csvfile:
     writer = csv.writer(csvfile)
     # Write the header
     writer.writerow(['method', 'distribution', 'array size', 'device memory', 'report type', 

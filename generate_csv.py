@@ -2,8 +2,8 @@ import re
 import csv
 
 # Open the text file
-folder='./profiles'
-with open(f'{folder}/console_output.txt', 'r') as file:
+directory='./profiles'
+with open(f'{directory}/console_output.txt', 'r') as file:
     lines = file.readlines()
 
 # Prepare to store the data
@@ -48,7 +48,7 @@ for line in lines:
 # Write data to CSV
 csv_columns = ['Method', 'Distribution', 'Array size', 'Device memory', 'Array MB', 'Chunks', 'GPUs'] + [f'Iteration {i}' for i in range(1, 11)]
 
-with open(f'{folder}/console_output.csv', 'w', newline='') as csvfile:
+with open(f'{directory}/console_output.csv', 'w', newline='') as csvfile:
     writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
     writer.writeheader()
     writer.writerows(data)

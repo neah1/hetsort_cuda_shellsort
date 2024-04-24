@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# Define arrays of parameters
 methods=("thrustsort2N" "thrustsort3N" "thrustsortInplace" "thrustsortInplaceMemcpy" "shellsort" "shellsort2N")
 
 arraySizes=(1000000000 2000000000 4000000000 6000000000 8000000000 10000000000)
@@ -19,7 +18,7 @@ checkSorted=0
 gpuCount=4
 seed=42
 
-# Function to run a benchmark with given parameters
+mkdir -p ./profiles
 run_benchmark() {
     local method=$1
     local distribution=$2
@@ -32,8 +31,6 @@ run_benchmark() {
         nsys profile --stats=true --output=$outputFile ./main $method $distribution $arraySize $deviceMemory $iterations $warmup $checkSorted $gpuCount $seed 2>&1 | tee -a ./profiles/console_output.txt
     fi
 }
-
-mkdir -p ./profiles
 
 # Standard benchmarks loop
 for method in "${methods[@]}"; do
