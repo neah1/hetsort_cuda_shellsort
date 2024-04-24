@@ -3,7 +3,7 @@
 bool checkSorted = true;
 bool bitonicChunks = false;
 std::string method, distribution;
-size_t arraySize, deviceMemory, iterations, warmup, seed;
+size_t arraySize, deviceMemory, gpuCount, iterations, warmup, seed;
 typedef void CUDASorter(std::vector<std::vector<std::vector<int>>>&, std::vector<GPUInfo>&);
 
 std::vector<int> runSort(CUDASorter cudaSorter, int* h_inputArray, size_t chunkSize, std::vector<GPUInfo>& gpus) {
@@ -102,7 +102,7 @@ void benchmark() {
     CUDASorter* cudaSorter = selectSortingMethod(bufferCount, chunkSize);
 
     nvtxRangePush("GPU information");
-    std::vector<GPUInfo> gpus = getGPUsInfo(deviceMemory, bufferCount);
+    std::vector<GPUInfo> gpus = getGPUsInfo(deviceMemory, bufferCount, gpuCount);
     nvtxRangePop();
 
     nvtxRangePush("Generate array");
@@ -121,13 +121,14 @@ void benchmark() {
 int main(int argc, char* argv[]) {
     method = (argc > 1) ? argv[1] : "thrustsort2N";
     distribution = (argc > 2) ? argv[2] : "uniform";
-    arraySize = (argc > 3) ? std::atoi(argv[3]) : 100'000'000;
-    deviceMemory = (argc > 4) ? std::atoi(argv[4]) : 100;
+    arraySize = (argc > 3) ? std::stoull(argv[3]) : 100'000'000;
+    deviceMemory = (argc > 4) ? std::stoull(argv[4]) : 100;
 
-    iterations = (argc > 5) ? std::atoi(argv[5]) : 1;
-    warmup = (argc > 6) ? std::atoi(argv[6]) : 0;
+    iterations = (argc > 5) ? std::stoull(argv[5]) : 1;
+    warmup = (argc > 6) ? std::stoull(argv[6]) : 0;
     checkSorted = (argc > 7) ? std::atoi(argv[7]) : 1;
-    seed = (argc > 8) ? std::atoi(argv[8]) : 42;
+    gpuCount = (argc > 8) ? std::stoull(argv[8]) : 4;
+    seed = (argc > 9) ? std::stoull(argv[9]) : 42;
 
     std::string label = "Method: " + method + ", Distribution: " + distribution + 
                         ", Array Size: " + std::to_string(arraySize) + 

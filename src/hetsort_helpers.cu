@@ -27,7 +27,7 @@ void GPUInfo::toggleBuffer() {
     useFirstBuffer = !useFirstBuffer;
 }
 
-std::vector<GPUInfo> getGPUsInfo(size_t deviceMemory, size_t bufferCount) {
+std::vector<GPUInfo> getGPUsInfo(size_t deviceMemory, size_t bufferCount, size_t gpuCount) {
     int numGPUs;
     cudaGetDeviceCount(&numGPUs);
     std::vector<GPUInfo> gpus;
@@ -41,7 +41,7 @@ std::vector<GPUInfo> getGPUsInfo(size_t deviceMemory, size_t bufferCount) {
         cudaMemGetInfo(&freeMem, &totalMem);
         #pragma omp critical
         {
-            if (deviceMemory <= freeMem) {
+            if (deviceMemory <= freeMem && gpus.size() < gpuCount) {
                 gpus.emplace_back(i, bufferSize, bufferCount);
                 std::cout << "GPU " << i << ": " << freeMem / (1024 * 1024) << " MB free, " << totalMem / (1024 * 1024) << " MB total\n";
             } else {

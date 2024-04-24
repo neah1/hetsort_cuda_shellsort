@@ -17,7 +17,7 @@ struct GPUInfo {
     void toggleBuffer();
 };
 
-std::vector<GPUInfo> getGPUsInfo(size_t deviceMemory, size_t bufferCount);
+std::vector<GPUInfo> getGPUsInfo(size_t deviceMemory, size_t bufferCount, size_t gpuCount);
 size_t nextPowerOfTwo(size_t n);
 void padVectorToPowerOfTwo(std::vector<int>& data);
 std::vector<std::vector<std::vector<int>>> splitArray(int* unsortedArray, size_t arraySize, size_t chunkSize, std::vector<GPUInfo>& gpus, bool bitonicChunks);
