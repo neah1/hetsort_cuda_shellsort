@@ -1,8 +1,9 @@
 import re
 import csv
+import sys
 
 # Open the text file
-directory='./profiles'
+directory = sys.argv[1]
 with open(f'{directory}/console_output.txt', 'r') as file:
     lines = file.readlines()
 
@@ -53,4 +54,4 @@ with open(f'{directory}/console_output.csv', 'w', newline='') as csvfile:
     writer.writeheader()
     writer.writerows(data)
 
-print("CSV file has been created.")
+print("Data has been written to console_output.csv")

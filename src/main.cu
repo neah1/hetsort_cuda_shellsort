@@ -45,17 +45,29 @@ CUDASorter* selectSortingMethod(size_t& bufferCount, size_t& chunkSize) {
 }
 
 std::vector<int> runSort(CUDASorter cudaSorter, int* h_inputArray, size_t chunkSize, std::vector<GPUInfo>& gpus) {
+    auto start = std::chrono::high_resolution_clock::now();
     nvtxRangePush("ArraySplit phase");
     std::vector<std::vector<std::vector<int>>> chunkGroups = splitArray(h_inputArray, arraySize, chunkSize, gpus, bitonicChunks);
     nvtxRangePop();
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+    printf("ArraySplit phase: %lld ms\n", duration);
 
+    auto start = std::chrono::high_resolution_clock::now();
     nvtxRangePush("Kernel phase");
     cudaSorter(chunkGroups, gpus);
     nvtxRangePop();
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+    printf("Kernel phase: %lld ms\n", duration);
 
+    auto start = std::chrono::high_resolution_clock::now();
     nvtxRangePush("Merge phase");
     std::vector<int> h_outputArray = multiWayMerge(chunkGroups, arraySize);
     nvtxRangePop();
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+    printf("Merge phase: %lld ms\n", duration);
 
     return h_outputArray;
 }
@@ -72,9 +84,7 @@ void runSortingAlgorithm(CUDASorter cudaSorter, int* h_inputArray, size_t chunkS
     }
 
     for (int i = 0; i < iterations; i++) {
-        // Start timing
         auto start = std::chrono::high_resolution_clock::now();
-        
         nvtxRangePush("Sorting algorithm");
         std::vector<int> h_outputArray;
         if (kernelMethod)
@@ -82,8 +92,6 @@ void runSortingAlgorithm(CUDASorter cudaSorter, int* h_inputArray, size_t chunkS
         else
             h_outputArray = runSort(cudaSorter, h_inputArray, chunkSize, gpus);
         nvtxRangePop();
-
-        // Stop timing
         auto stop = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
         printf("Iteration %d: %lld ms\n", i, duration);
@@ -97,15 +105,12 @@ void runSortingAlgorithm(CUDASorter cudaSorter, int* h_inputArray, size_t chunkS
 }
 
 void benchmark() {
-    // Select sorting method
+    // Select sorting method and obtain GPU information
     size_t bufferCount, chunkSize;
     CUDASorter* cudaSorter = selectSortingMethod(bufferCount, chunkSize);
-
-    nvtxRangePush("GPU information");
     std::vector<GPUInfo> gpus = getGPUsInfo(deviceMemory, bufferCount, gpuCount);
-    nvtxRangePop();
 
-    nvtxRangePush("Generate array");
+    // Allocate and initialize input array
     int* h_inputArray;
     cudaMallocHost((void**)&h_inputArray, arraySize * sizeof(int));
     if (fileExists(arraySize, distribution)) {
@@ -114,7 +119,6 @@ void benchmark() {
         generateRandomArray(h_inputArray, arraySize, seed, distribution);
         writeArrayToFile(h_inputArray, arraySize, distribution);
     }
-    nvtxRangePop();
 
     // Run sorting algorithm
     runSortingAlgorithm(cudaSorter, h_inputArray, chunkSize, gpus);

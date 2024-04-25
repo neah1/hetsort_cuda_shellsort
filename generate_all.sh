@@ -14,8 +14,10 @@ for file in $directory/*.nsys-rep; do
     fi
 done
 
-echo "Data aggregated into nsys_output.txt"
+echo "Data has been written to nsys_output.txt"
+make clean-sqlite
 
-python3 generate_csv.py
-python3 generate_nsys.py
-python3 generate_merge.py
+module load sklearn-pandas
+python3 generate_csv.py $directory
+python3 generate_nsys.py $directory
+python3 generate_merge.py $directory

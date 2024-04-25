@@ -1,7 +1,8 @@
 import pandas as pd
+import sys
 
 # Load the CSV files
-directory = './profiles'
+directory = sys.argv[1]
 csv_file_1 = f'{directory}/console_output.csv'
 csv_file_2 = f'{directory}/nsys_output.csv'
 
@@ -17,3 +18,5 @@ merged_df = pd.merge(df1, df2, on=common_columns.tolist(), how='outer')
 
 # Optionally, save the merged DataFrame to a new CSV file
 merged_df.to_csv(f'{directory}/merged_output.csv', index=False)
+
+print("Data has been written to merged_output.csv")

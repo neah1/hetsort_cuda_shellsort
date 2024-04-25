@@ -1,19 +1,19 @@
 import re
 import csv
+import sys
 
 # Open the text file
-directory='./profiles'
+directory = sys.argv[1]
 with open(f'{directory}/nsys_output.txt', 'r') as file:
     data = file.read()
 
 # Function to parse each block of data
 def parse_data_block(block):
     # Extract the header line
-    header_regex = (r"\[.*reports/(.*).py ./profiles_lower/profile_(.*?)_(uniform|normal|sorted|reverse_sorted|nearly_sorted)_(.*?)_(.*?).sqlite\]")
+    header_regex = (r"\[.*reports/(.*).py ./.*/profile_(.*?)_(uniform|normal|sorted|reverse_sorted|nearly_sorted)_(.*?)_(.*?).sqlite\]")
     header_match = re.search(header_regex, block)
     if not header_match:
-        print("No header match found for block:", block[:100])  # Debugging output
-        return []  # Skip blocks that do not match the expected format
+        return []
 
     report_type, method, distribution, array_size, device_memory = header_match.groups()
 
