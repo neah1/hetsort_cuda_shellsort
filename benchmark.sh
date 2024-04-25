@@ -3,7 +3,7 @@
 methods=("thrustsort2N" "thrustsort3N" "thrustsortInplace" "thrustsortInplaceMemcpy" "shellsort" "shellsort2N")
 
 arraySizes=(1000000000 2000000000 4000000000 6000000000 8000000000 10000000000)
-deviceMemories=(1000 2000 4000)
+deviceMemories=(2000 4000)
 
 arraySizes2=(10000 100000 1000000 10000000 100000000)
 deviceMemories2=(100 500 1000)
@@ -26,35 +26,43 @@ run_benchmark() {
     local deviceMemory=$4
     local outputFile="./profiles/profile_${method}_${distribution}_${arraySize}_${deviceMemory}.nsys-rep"
     if [ -f "$outputFile" ]; then
-        echo "Skipping profiling for $outputFile as it already exists."
+        if nsys stats --report gpukernsum $outputFile | grep -q "SKIPPED"; then
+            echo "No CUDA kernel data found in $outputFile"
+            run_profile
+        fi
     else
-        nsys profile --stats=true --output=$outputFile ./main $method $distribution $arraySize $deviceMemory $iterations $warmup $checkSorted $gpuCount $seed 2>&1 | tee -a ./profiles/console_output.txt
+        run_profile
     fi
 }
 
-# Standard benchmarks loop
-for method in "${methods[@]}"; do
-    for arraySize in "${arraySizes2[@]}"; do
-        for deviceMemory in "${deviceMemories2[@]}"; do
-            run_benchmark $method uniform $arraySize $deviceMemory
-        done
-    done
-done
-
-# Standard benchmarks loop
-for method in "${methods[@]}"; do
-    for arraySize in "${arraySizes[@]}"; do
-        for deviceMemory in "${deviceMemories[@]}"; do
-            run_benchmark $method uniform $arraySize $deviceMemory
-        done
-    done
-done
+run_profile() {
+    echo "Profiling $method $distribution $arraySize $deviceMemory"
+    nsys profile --stats=true --force-overwrite=true --output=$outputFile ./main $method $distribution $arraySize $deviceMemory $iterations $warmup $checkSorted $gpuCount $seed 2>&1 | tee -a ./profiles/console_output.txt
+}
 
 # Benchmark kernels only
-for method in "${kernel_methods[@]}"; do
-    for distribution in "${distributions[@]}"; do
-        for arraySize in "${kernel_arraySizes[@]}"; do
+for distribution in "${distributions[@]}"; do
+    for arraySize in "${kernel_arraySizes[@]}"; do
+        for method in "${kernel_methods[@]}"; do
             run_benchmark $method $distribution $arraySize 0
+        done
+    done
+done
+
+# Standard benchmarks loop
+for deviceMemory in "${deviceMemories[@]}"; do
+    for arraySize in "${arraySizes[@]}"; do
+        for method in "${methods[@]}"; do
+            run_benchmark $method uniform $arraySize $deviceMemory
+        done
+    done
+done
+
+# Standard benchmarks loop
+for deviceMemory in "${deviceMemories2[@]}"; do
+    for arraySize in "${arraySizes2[@]}"; do
+        for method in "${methods[@]}"; do
+            run_benchmark $method uniform $arraySize $deviceMemory
         done
     done
 done

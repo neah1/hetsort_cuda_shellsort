@@ -16,4 +16,6 @@ done
 
 echo "Data aggregated into nsys_output.txt"
 
-python3 generate_nsys.py 
+python3 generate_csv.py
+python3 generate_nsys.py
+python3 generate_merge.py

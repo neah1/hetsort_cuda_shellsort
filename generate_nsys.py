@@ -47,7 +47,7 @@ for block in blocks:
 with open(f'{directory}/nsys_output.csv', 'w', newline='') as csvfile:
     writer = csv.writer(csvfile)
     # Write the header
-    writer.writerow(['method', 'distribution', 'array size', 'device memory', 'report type', 
+    writer.writerow(['Method', 'Distribution', 'Array size', 'Device memory', 'Report type', 
                      'Time (%)', 'Total Time (ns)', 'Instances', 'Avg (ns)', 
                      'Med (ns)', 'Min (ns)', 'Max (ns)', 'StdDev (ns)', 'Name'])
     # Write the data
