@@ -108,7 +108,12 @@ void benchmark() {
     nvtxRangePush("Generate array");
     int* h_inputArray;
     cudaMallocHost((void**)&h_inputArray, arraySize * sizeof(int));
-    generateRandomArray(h_inputArray, arraySize, seed, distribution);
+    if (fileExists(arraySize, distribution)) {
+        readArrayFromFile(h_inputArray, arraySize, distribution);
+    } else {
+        generateRandomArray(h_inputArray, arraySize, seed, distribution);
+        writeArrayToFile(h_inputArray, arraySize, distribution);
+    }
     nvtxRangePop();
 
     // Run sorting algorithm

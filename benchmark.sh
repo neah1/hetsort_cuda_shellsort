@@ -12,7 +12,7 @@ distributions=("uniform" "normal" "sorted" "reverse_sorted" "nearly_sorted")
 kernel_methods=("shellsortKernel" "thrustsortKernel")
 kernel_arraySizes=(1000000000)
 
-iterations=10
+iterations=5
 warmup=1
 checkSorted=0
 gpuCount=4

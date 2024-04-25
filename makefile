@@ -30,6 +30,10 @@ clean:
 	@echo "Cleaning up profiles..."
 	@rm -rf $(PROFILES_DIR)/*
 
+clean_sqlite:
+	@echo "Cleaning up sqlite files..."
+	@rm -rf $(PROFILES_DIR)/*.sqlite
+
 # Profile with Nsight Systems
 profile-nsys: $(TARGET)
 	@echo "Profiling $(TARGET) with Nsight Systems"

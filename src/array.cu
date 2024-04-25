@@ -1,6 +1,6 @@
 #include "array.cuh"
 
-void generateRandomArray(int* array, size_t arraySize, int seed, std::string distribution) {
+void generateRandomArray(int* array, size_t arraySize, int seed, std::string& distribution) {
     std::mt19937 gen(seed); // Mersenne Twister PRNG
     if (distribution == "uniform") {
         std::uniform_int_distribution<int> dis(0, INT_MAX);
@@ -41,6 +41,28 @@ void generateRandomArray(int* array, size_t arraySize, int seed, std::string dis
         printf("Invalid distribution type: %s\n", distribution.c_str());
         exit(1);
     }
+}
+
+bool fileExists(size_t arraySize, std::string& distribution) {
+    std::string filename = "./data/array_" + distribution + "_" + std::to_string(arraySize) + ".bin";
+    std::ifstream infile(filename);
+    return infile.good();
+}
+
+void writeArrayToFile(int* array, size_t arraySize, std::string& distribution) {
+    printf("Writing array to file\n");
+    std::string filename = "./data/array_" + distribution + "_" + std::to_string(arraySize) + ".bin";
+    std::ofstream out(filename, std::ios::binary);
+    out.write(reinterpret_cast<char*>(array), arraySize * sizeof(int));
+    out.close();
+}
+
+void readArrayFromFile(int* array, size_t arraySize, std::string& distribution) {
+    printf("Reading array from file\n");
+    std::string filename = "./data/array_" + distribution + "_" + std::to_string(arraySize) + ".bin";
+    std::ifstream in(filename, std::ios::binary);
+    in.read(reinterpret_cast<char*>(array), arraySize * sizeof(int));
+    in.close();
 }
 
 std::unordered_map<int, int> countElements(const int* array, size_t arraySize) {

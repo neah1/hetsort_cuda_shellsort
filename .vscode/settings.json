@@ -64,6 +64,7 @@
         "__config": "cpp",
         "__locale": "cpp",
         "locale": "cpp",
-        "__tuple": "cpp"
+        "__tuple": "cpp",
+        "filesystem": "cpp"
     }
 }
