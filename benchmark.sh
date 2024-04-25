@@ -12,12 +12,13 @@ distributions=("uniform" "normal" "sorted" "reverse_sorted" "nearly_sorted")
 kernel_methods=("shellsortKernel" "thrustsortKernel")
 kernel_arraySizes=(1000000000)
 
-iterations=5
+iterations=10
 warmup=1
 checkSorted=0
 gpuCount=4
 seed=42
 
+export TMPDIR=./tmp
 mkdir -p ./profiles
 run_benchmark() {
     local method=$1

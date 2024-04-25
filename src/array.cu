@@ -1,5 +1,7 @@
 #include "array.cuh"
 
+const std::string DATA_FOLDER = "./data";
+
 void generateRandomArray(int* array, size_t arraySize, int seed, std::string& distribution) {
     std::mt19937 gen(seed); // Mersenne Twister PRNG
     if (distribution == "uniform") {
@@ -43,26 +45,33 @@ void generateRandomArray(int* array, size_t arraySize, int seed, std::string& di
     }
 }
 
+bool directoryExists(const std::string& path) {
+    struct stat info;
+    if (stat(path.c_str(), &info) != 0) return false;
+    return (info.st_mode & S_IFDIR);
+}
+
 bool fileExists(size_t arraySize, std::string& distribution) {
-    std::string filename = "./data/array_" + distribution + "_" + std::to_string(arraySize) + ".bin";
+    std::string filename = DATA_FOLDER + "/array_" + distribution + "_" + std::to_string(arraySize) + ".bin";
     std::ifstream infile(filename);
     return infile.good();
 }
 
-void writeArrayToFile(int* array, size_t arraySize, std::string& distribution) {
-    printf("Writing array to file\n");
-    std::string filename = "./data/array_" + distribution + "_" + std::to_string(arraySize) + ".bin";
-    std::ofstream out(filename, std::ios::binary);
-    out.write(reinterpret_cast<char*>(array), arraySize * sizeof(int));
-    out.close();
-}
-
 void readArrayFromFile(int* array, size_t arraySize, std::string& distribution) {
     printf("Reading array from file\n");
-    std::string filename = "./data/array_" + distribution + "_" + std::to_string(arraySize) + ".bin";
+    std::string filename = DATA_FOLDER + "/array_" + distribution + "_" + std::to_string(arraySize) + ".bin";
     std::ifstream in(filename, std::ios::binary);
     in.read(reinterpret_cast<char*>(array), arraySize * sizeof(int));
     in.close();
+}
+
+void writeArrayToFile(int* array, size_t arraySize, std::string& distribution) {
+    if (!directoryExists(DATA_FOLDER)) return;
+    printf("Writing array to file\n");
+    std::string filename = DATA_FOLDER + "/array_" + distribution + "_" + std::to_string(arraySize) + ".bin";
+    std::ofstream out(filename, std::ios::binary);
+    out.write(reinterpret_cast<char*>(array), arraySize * sizeof(int));
+    out.close();
 }
 
 std::unordered_map<int, int> countElements(const int* array, size_t arraySize) {

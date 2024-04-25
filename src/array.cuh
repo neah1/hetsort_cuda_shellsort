@@ -8,9 +8,10 @@
 #include <fstream>
 #include <stdlib.h>
 #include <algorithm>
+#include <sys/stat.h>
 #include <unordered_map>
 
-void generateRandomArray(int* array, size_t arraySize, int seed, std::string distribution);
+void generateRandomArray(int* array, size_t arraySize, int seed, std::string& distribution);
 bool fileExists(size_t arraySize, std::string& distribution);
 void writeArrayToFile(int* array, size_t arraySize, std::string& distribution);
 void readArrayFromFile(int* array, size_t arraySize, std::string& distribution);

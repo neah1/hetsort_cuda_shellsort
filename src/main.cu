@@ -6,6 +6,44 @@ std::string method, distribution;
 size_t arraySize, deviceMemory, gpuCount, iterations, warmup, seed;
 typedef void CUDASorter(std::vector<std::vector<std::vector<int>>>&, std::vector<GPUInfo>&);
 
+CUDASorter* selectSortingMethod(size_t& bufferCount, size_t& chunkSize) {
+    CUDASorter* cudaSorter = nullptr;
+    deviceMemory = deviceMemory * 1024 * 1024;
+    if (method == "thrustsort2N") {
+        cudaSorter = sortThrust2N;
+        bufferCount = 2;
+    } else if (method == "thrustsort3N") {
+        cudaSorter = sortThrust3N;
+        bufferCount = 3;
+    } else if (method == "thrustsortInplace") {
+        cudaSorter = sortThrustInplace;
+        bufferCount = 2;
+    } else if (method == "thrustsortInplaceMemcpy") {
+        cudaSorter = sortThrustInplaceMemcpy;
+        bufferCount = 2;
+    } else if (method == "shellsort") {
+        cudaSorter = sortShell;
+        bufferCount = 1;
+        bitonicChunks = true;
+    } else if (method == "shellsort2N") {
+        cudaSorter = sortShell2N;
+        bufferCount = 2;
+        bitonicChunks = true;
+    } else if (method == "shellsortKernel") {
+        bufferCount = 1;
+        deviceMemory = nextPowerOfTwo(arraySize) * sizeof(int);
+    } else if (method == "thrustsortKernel") {
+        bufferCount = 2;
+        deviceMemory = 2.5 * arraySize * sizeof(int);
+    } else {
+        std::cerr << "Invalid sorting method.\n";
+        exit(EXIT_FAILURE);
+    }
+    chunkSize = (deviceMemory / bufferCount) / sizeof(int);
+    if (method.find("thrustsort") != std::string::npos) chunkSize *= 0.8;
+    return cudaSorter;
+}
+
 std::vector<int> runSort(CUDASorter cudaSorter, int* h_inputArray, size_t chunkSize, std::vector<GPUInfo>& gpus) {
     nvtxRangePush("ArraySplit phase");
     std::vector<std::vector<std::vector<int>>> chunkGroups = splitArray(h_inputArray, arraySize, chunkSize, gpus, bitonicChunks);
@@ -56,44 +94,6 @@ void runSortingAlgorithm(CUDASorter cudaSorter, int* h_inputArray, size_t chunkS
             checkArraySorted(h_outputArray.data(), originalCounts, arraySize);
         }
     }
-}
-
-CUDASorter* selectSortingMethod(size_t& bufferCount, size_t& chunkSize) {
-    CUDASorter* cudaSorter = nullptr;
-    deviceMemory = deviceMemory * 1024 * 1024;
-    if (method == "thrustsort2N") {
-        cudaSorter = sortThrust2N;
-        bufferCount = 2;
-    } else if (method == "thrustsort3N") {
-        cudaSorter = sortThrust3N;
-        bufferCount = 3;
-    } else if (method == "thrustsortInplace") {
-        cudaSorter = sortThrustInplace;
-        bufferCount = 2;
-    } else if (method == "thrustsortInplaceMemcpy") {
-        cudaSorter = sortThrustInplaceMemcpy;
-        bufferCount = 2;
-    } else if (method == "shellsort") {
-        cudaSorter = sortShell;
-        bufferCount = 1;
-        bitonicChunks = true;
-    } else if (method == "shellsort2N") {
-        cudaSorter = sortShell2N;
-        bufferCount = 2;
-        bitonicChunks = true;
-    } else if (method == "shellsortKernel") {
-        bufferCount = 1;
-        deviceMemory = nextPowerOfTwo(arraySize) * sizeof(int);
-    } else if (method == "thrustsortKernel") {
-        bufferCount = 2;
-        deviceMemory = 2.5 * arraySize * sizeof(int);
-    } else {
-        std::cerr << "Invalid sorting method.\n";
-        exit(EXIT_FAILURE);
-    }
-    chunkSize = (deviceMemory / bufferCount) / sizeof(int);
-    if (method.find("thrustsort") != std::string::npos) chunkSize *= 0.8;
-    return cudaSorter;
 }
 
 void benchmark() {

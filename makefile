@@ -30,7 +30,7 @@ clean:
 	@echo "Cleaning up profiles..."
 	@rm -rf $(PROFILES_DIR)/*
 
-clean_sqlite:
+clean-sqlite:
 	@echo "Cleaning up sqlite files..."
 	@rm -rf $(PROFILES_DIR)/*.sqlite
 
