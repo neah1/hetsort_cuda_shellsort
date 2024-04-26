@@ -7,25 +7,33 @@ directory = sys.argv[1]
 with open(f'{directory}/console_output.txt', 'r') as file:
     lines = file.readlines()
 
+# Regular expressions for extracting data
+method_re = re.compile(r'Method: (\w+), Distribution: (\w+), Array Size: (\d+), Array Byte Size: (\d+) MB, Device Memory: (\d+) MB')
+gpu_count_re = re.compile(r'GPUs available: (\d+)')
+chunk_count_re = re.compile(r'Number of chunks: (\d+)')
+array_split_re = re.compile(r'ArraySplit phase: (\d+) ms')
+kernel_re = re.compile(r'Kernel phase: (\d+) ms')
+merge_re = re.compile(r'Merge phase: (\d+) ms')
+iteration_re = re.compile(r'Iteration (\d+): (\d+) ms')
+profiling_re = re.compile(r'Profiling .*')
+
 # Prepare to store the data
 data = []
 current_data = {}
-
-# Regular expressions for extracting data
-method_re = re.compile(r'Method: (\w+), Distribution: (\w+), Array Size: (\d+), Array Byte Size: (\d+) MB, Device Memory: (\d+) MB')
-iteration_re = re.compile(r'Iteration (\d+): (\d+) ms')
-gpu_count_re = re.compile(r'GPUs available: (\d+)')
-chunk_count_re = re.compile(r'Number of chunks: (\d+)')
+current_iteration = {}
 
 # Extract data
-for line in lines:
+for line in lines[1:]:
     method_match = method_re.search(line)
-    iteration_match = iteration_re.search(line)
     gpu_count_match = gpu_count_re.search(line)
     chunk_count_match = chunk_count_re.search(line)
-    
+    array_split_match = array_split_re.search(line)
+    kernel_match = kernel_re.search(line)
+    merge_match = merge_re.search(line)
+    iteration_match = iteration_re.search(line)
+    profiling_match = profiling_re.search(line)
+
     if method_match:
-        # New method and distribution info found, reset current data
         current_data = {
             'Method': method_match.group(1),
             'Distribution': method_match.group(2),
@@ -37,20 +45,23 @@ for line in lines:
         current_data['GPUs'] = gpu_count_match.group(1)
     elif chunk_count_match:
         current_data['Chunks'] = chunk_count_match.group(1)
+    elif array_split_match:
+        current_iteration['ArraySplit'] = array_split_match.group(1)
+    elif kernel_match:
+        current_iteration['Kernel'] = kernel_match.group(1)
+    elif merge_match:
+        current_iteration['Merge'] = merge_match.group(1)
     elif iteration_match:
-        # Map iterations to their respective times
-        iteration_number = int(iteration_match.group(1)) + 1  # Convert to 1-based index
+        iteration_number = int(iteration_match.group(1)) + 1
         current_data[f'Iteration {iteration_number}'] = iteration_match.group(2)
-        
-        # After the last iteration, store the complete set of data
-        if iteration_number == 10:
-            data.append(current_data.copy())
-
-# Write data to CSV
-csv_columns = ['Method', 'Distribution', 'Array size', 'Device memory', 'Array MB', 'Chunks', 'GPUs'] + [f'Iteration {i}' for i in range(1, 11)]
+        current_data.update({f'{key} {iteration_number}': value for key, value in current_iteration.items()})
+        current_iteration = {}
+    elif profiling_match:
+        data.append(current_data.copy())
+        current_data = {}
 
 with open(f'{directory}/console_output.csv', 'w', newline='') as csvfile:
-    writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
+    writer = csv.DictWriter(csvfile, fieldnames=data[0].keys())
     writer.writeheader()
     writer.writerows(data)
 
