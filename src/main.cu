@@ -53,20 +53,20 @@ std::vector<int> runSort(CUDASorter cudaSorter, int* h_inputArray, size_t chunkS
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
     printf("ArraySplit phase: %lld ms\n", duration);
 
-    auto start = std::chrono::high_resolution_clock::now();
+    start = std::chrono::high_resolution_clock::now();
     nvtxRangePush("Kernel phase");
     cudaSorter(chunkGroups, gpus);
     nvtxRangePop();
-    auto stop = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+    stop = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
     printf("Kernel phase: %lld ms\n", duration);
 
-    auto start = std::chrono::high_resolution_clock::now();
+    start = std::chrono::high_resolution_clock::now();
     nvtxRangePush("Merge phase");
     std::vector<int> h_outputArray = multiWayMerge(chunkGroups, arraySize);
     nvtxRangePop();
-    auto stop = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+    stop = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
     printf("Merge phase: %lld ms\n", duration);
 
     return h_outputArray;
