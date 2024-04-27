@@ -33,8 +33,7 @@ void sortThrustInplace(std::vector<std::vector<std::vector<int>>>& chunkGroups, 
 void sortThrustInplaceMemcpy(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::vector<GPUInfo>& gpus);
 
 void doubleMemcpy(int* dest_array, const int* source_array, size_t arraySize, cudaMemcpyKind memcpyMode, cudaStream_t stream1, cudaStream_t stream2);
-void InplaceMemcpy(int* htod_source, int* dtoh_source, int* dtoh_dest, size_t num_bytes_htod, size_t num_bytes_dtoh,
-                   cudaStream_t htod_stream, cudaStream_t dtoh_stream, size_t block_size);
+void InplaceMemcpy(int* htod_source, int* dtoh_source, int* dtoh_dest, size_t num_bytes_htod, size_t num_bytes_dtoh, cudaStream_t htod_stream, cudaStream_t dtoh_stream);
 
 #define CHECK_CUDA_ERROR(err)                                         \
     if (err != cudaSuccess) {                                         \

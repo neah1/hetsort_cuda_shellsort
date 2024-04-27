@@ -18,10 +18,12 @@ void doubleMemcpy(int* dest_array, const int* source_array, size_t arraySize, cu
     CHECK_CUDA_ERROR(cudaStreamSynchronize(stream2));
 }
 
-void InplaceMemcpy(int* htod_source, int* dtoh_source, int* dtoh_dest, size_t num_bytes_htod, size_t num_bytes_dtoh,
-                   cudaStream_t htod_stream, cudaStream_t dtoh_stream, size_t block_size) {
-
+void InplaceMemcpy(int* htod_source, int* dtoh_source, int* dtoh_dest, size_t num_bytes_htod, size_t num_bytes_dtoh, cudaStream_t htod_stream, cudaStream_t dtoh_stream) {
   if (dtoh_dest == nullptr && htod_source == nullptr) return;
+
+  size_t block_size = 32 * 1024 * 1024;
+  num_bytes_htod = num_bytes_htod * sizeof(int);
+  num_bytes_dtoh = num_bytes_dtoh * sizeof(int);
 
   size_t num_bytes;
   if (dtoh_dest == nullptr) {
