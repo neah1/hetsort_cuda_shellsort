@@ -130,14 +130,12 @@ void sortShell(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::vec
 
             shellsort(gpu.buffer1, chunks[i].size(), gpu.stream1);
 
-            int* nextChunkData = nullptr;
-            size_t nextChunkSize = 0;
+            doubleMemcpy(chunks[i].data(), gpu.buffer1, chunks[i].size(), cudaMemcpyDeviceToHost, gpu.stream1, gpu.streamTmp);
+
             if (i + 1 < chunks.size()) {
                 padVectorToPowerOfTwo(chunks[i + 1]);
-                nextChunkData = chunks[i + 1].data();
-                nextChunkSize = chunks[i + 1].size();
+                doubleMemcpy(gpu.buffer1, chunks[i + 1].data(), chunks[i + 1].size(), cudaMemcpyHostToDevice, gpu.stream1, gpu.streamTmp);
             }
-            InplaceMemcpy(nextChunkData, gpu.buffer1, chunks[i].data(), nextChunkSize, chunks[i].size(), gpu.stream1, gpu.streamTmp);
         }
 
         cudaStreamSynchronize(gpu.stream1);
@@ -168,19 +166,12 @@ void sortShell2N(std::vector<std::vector<std::vector<int>>>& chunkGroups, std::v
             shellsort(mainBuffer, chunks[i].size(), mainStream);
 
             // Copy the sorted chunk back and the next chunk to the secondary buffer
-            int* nextChunkData = nullptr;
-            size_t nextChunkSize = 0;
-
-            int* prevChunkData = (i > 0) ? chunks[i - 1].data() : nullptr;
-            size_t prevChunkSize = (i > 0) ? chunks[i - 1].size() : 0;
-
+            if (i > 0) 
+                doubleMemcpy(chunks[i - 1].data(), secondaryBuffer, chunks[i - 1].size(), cudaMemcpyDeviceToHost, secondaryStream, gpu.streamTmp);
             if (i + 1 < chunks.size()) {
                 padVectorToPowerOfTwo(chunks[i + 1]);
-                nextChunkData = chunks[i + 1].data();
-                nextChunkSize = chunks[i + 1].size();
+                doubleMemcpy(secondaryBuffer, chunks[i + 1].data(), chunks[i + 1].size(), cudaMemcpyHostToDevice, secondaryStream, gpu.streamTmp);
             }
-
-            InplaceMemcpy(nextChunkData, secondaryBuffer, prevChunkData, nextChunkSize, prevChunkSize, secondaryStream, gpu.streamTmp);
 
             // Copy the last sorted chunk back
             if (i == chunks.size() - 1) 
