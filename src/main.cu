@@ -1,12 +1,12 @@
 #include "hetsort.cuh"
 
-bool checkSorted = true;
-bool bitonicChunks = false;
+bool checkSorted, bitonicChunks;
 std::string method, distribution;
 size_t arraySize, deviceMemory, gpuCount, iterations, warmup, seed;
 typedef void CUDASorter(std::vector<std::vector<std::vector<int>>>&, std::vector<GPUInfo>&);
 
 CUDASorter* selectSortingMethod(size_t& bufferCount, size_t& chunkSize) {
+    bitonicChunks = false;
     CUDASorter* cudaSorter = nullptr;
     deviceMemory = deviceMemory * 1024 * 1024;
     if (method == "thrustsort2N") {
@@ -72,7 +72,11 @@ std::vector<int> runSort(CUDASorter cudaSorter, int* h_inputArray, size_t chunkS
     return h_outputArray;
 }
 
-void runSortingAlgorithm(CUDASorter cudaSorter, int* h_inputArray, size_t chunkSize, std::vector<GPUInfo>& gpus) {
+void runSortingAlgorithm(int* h_inputArray) {
+    // Select sorting method and obtain GPU information
+    size_t bufferCount, chunkSize;
+    CUDASorter* cudaSorter = selectSortingMethod(bufferCount, chunkSize);
+    std::vector<GPUInfo> gpus = getGPUsInfo(deviceMemory, bufferCount, gpuCount);
     bool kernelMethod = method.find("Kernel") != std::string::npos;
 
     for (int i = 0; i < warmup; i++) {
@@ -105,11 +109,6 @@ void runSortingAlgorithm(CUDASorter cudaSorter, int* h_inputArray, size_t chunkS
 }
 
 void benchmark() {
-    // Select sorting method and obtain GPU information
-    size_t bufferCount, chunkSize;
-    CUDASorter* cudaSorter = selectSortingMethod(bufferCount, chunkSize);
-    std::vector<GPUInfo> gpus = getGPUsInfo(deviceMemory, bufferCount, gpuCount);
-
     // Allocate and initialize input array
     int* h_inputArray;
     cudaMallocHost((void**)&h_inputArray, arraySize * sizeof(int));
@@ -121,17 +120,25 @@ void benchmark() {
     }
 
     // Run sorting algorithm
-    runSortingAlgorithm(cudaSorter, h_inputArray, chunkSize, gpus);
+    if (method == "all") {
+        for (std::string run : {"shellsort", "shellsort2N", "thrustsort2N"}){
+            method = run;
+            printf("Running %s\n", method.c_str());
+            runSortingAlgorithm(h_inputArray);
+        }
+    } else {
+        runSortingAlgorithm(h_inputArray);
+    }
 
     // Clean up
     cudaFreeHost(h_inputArray);
 }
 
 int main(int argc, char* argv[]) {
-    method = (argc > 1) ? argv[1] : "thrustsort2N";
+    method = (argc > 1) ? argv[1] : "all";
     distribution = (argc > 2) ? argv[2] : "uniform";
     arraySize = (argc > 3) ? std::stoull(argv[3]) : 100'000'000;
-    deviceMemory = (argc > 4) ? std::stoull(argv[4]) : 100;
+    deviceMemory = (argc > 4) ? std::stoull(argv[4]) : 10;
 
     iterations = (argc > 5) ? std::stoull(argv[5]) : 1;
     warmup = (argc > 6) ? std::stoull(argv[6]) : 0;
@@ -146,8 +153,10 @@ int main(int argc, char* argv[]) {
                         ", Iterations: " + std::to_string(iterations) + 
                         ", Warmup: " + std::to_string(warmup) +
                         ", Check Sorted: " + std::to_string(checkSorted) + "\n";
+                        
     printf(label.c_str());
 
     benchmark();
+
     return 0;
 }
