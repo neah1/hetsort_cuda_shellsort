@@ -59,6 +59,7 @@ for line in lines[1:]:
     elif profiling_match:
         data.append(current_data.copy())
         current_data = {}
+data.append(current_data.copy())
 
 with open(f'{directory}/console_output.csv', 'w', newline='') as csvfile:
     writer = csv.DictWriter(csvfile, fieldnames=data[0].keys())
