@@ -1,4 +1,4 @@
-# parallel-shellsort
+# hetsort_cuda_shellsort
 
 ## Overview
 Implementation of HETsort that leverages a parallel shellsort kernel optimized for NVIDIA GPUs, focusing on sorting high volumes of data in heterogeneous computing environments and optimizing device memory usage.
