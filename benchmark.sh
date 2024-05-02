@@ -1,20 +1,22 @@
 #!/bin/bash
 
-methods=("shellsort" "shellsort2N" "thrustsort2N" "thrustsort3N" "thrustsortInplace" "thrustsortInplaceMemcpy")
-kernel_methods=("shellsortKernel" "thrustsortKernel")
-distributions=("uniform" "normal" "sorted" "reverse_sorted" "nearly_sorted") 
+# "shellsort" "shellsort2N" "thrustsort2N" "thrustsort3N" "thrustsortInplace" "thrustsortInplaceMemcpy" "shellsortKernel" "thrustsortKernel"
+# "uniform" "normal" "sorted" "reverse_sorted" "nearly_sorted"
 
-arraySizes=(1000000000 2000000000 4000000000 6000000000 8000000000 10000000000)
-kernel_arraySizes=(300000000 400000000 500000000)
-deviceMemories=(4000 2000)
-
-iterations=5
-warmup=0
-checkSorted=0
-gpuCount=4
-seed=42
+# LARGE PROFILE RUN
+# methods=("all")
+# distributions=("uniform") 
+# arraySizes=(10000000000)
+# deviceMemories=(4096)
+# iterations=1
+# warmup=0
+# checkSorted=0
+# gpuCount=4
+# seed=42
+# profile=1
 
 mkdir -p ./profiles
+
 run_benchmark() {
     local method=$1
     local distribution=$2
@@ -34,24 +36,22 @@ run_benchmark() {
 
 run_profile() {
     echo "Profiling $method $distribution $arraySize $deviceMemory" | tee -a ./profiles/console_output.txt
-    # nsys profile --force-overwrite=true --output=$outputFile 
-    ./main $method $distribution $arraySize $deviceMemory $iterations $warmup $checkSorted $gpuCount $seed 2>&1 | tee -a ./profiles/console_output.txt
+    if [ $profile -eq 1 ]; then
+        nsys profile --force-overwrite=true --output=$outputFile ./main $method $distribution $arraySize $deviceMemory $iterations $warmup $checkSorted $gpuCount $seed 2>&1 | tee -a ./profiles/console_output.txt
+    else
+        ./main $method $distribution $arraySize $deviceMemory $iterations $warmup $checkSorted $gpuCount $seed 2>&1 | tee -a ./profiles/console_output.txt
+    fi   
 }
 
-# Standard benchmarks loop
+
 for deviceMemory in "${deviceMemories[@]}"; do
     for arraySize in "${arraySizes[@]}"; do
-        for method in "${methods[@]}"; do
-            run_benchmark $method uniform $arraySize $deviceMemory
+        for distribution in "${distributions[@]}"; do
+            for method in "${methods[@]}"; do
+                run_benchmark $method $distribution $arraySize $deviceMemory
+            done
         done
     done
 done
 
-# # Benchmark kernels only
-# for distribution in "${distributions[@]}"; do
-#     for arraySize in "${kernel_arraySizes[@]}"; do
-#         for method in "${kernel_methods[@]}"; do
-#             run_benchmark $method $distribution $arraySize 0
-#         done
-#     done
-# done
+
